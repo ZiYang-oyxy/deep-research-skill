@@ -10,6 +10,14 @@ import sys
 from pathlib import Path
 from typing import List, Tuple, Dict
 
+from report_contract import (
+    EXECUTIVE_SUMMARY_MAX_WORDS,
+    EXECUTIVE_SUMMARY_MIN_WORDS,
+    MIN_REPORT_WORDS,
+    RECOMMENDED_MIN_SOURCES,
+    REPORT_SECTION_SPECS,
+)
+
 
 class ReportValidator:
     """Validates research report quality"""
@@ -60,7 +68,7 @@ class ReportValidator:
         return len(self.errors) == 0
 
     def _check_executive_summary(self) -> bool:
-        """Check executive summary exists and is 200-400 words"""
+        """Check executive summary exists and stays within the shared contract."""
         pattern = r'## Executive Summary(.*?)(?=##|\Z)'
         match = re.search(pattern, self.content, re.DOTALL | re.IGNORECASE)
 
@@ -71,26 +79,24 @@ class ReportValidator:
         summary = match.group(1).strip()
         word_count = len(summary.split())
 
-        if word_count > 400:
-            self.warnings.append(f"Executive summary too long: {word_count} words (should be ≤400)")
+        if word_count > EXECUTIVE_SUMMARY_MAX_WORDS:
+            self.errors.append(
+                f"Executive summary too long: {word_count} words "
+                f"(should be ≤{EXECUTIVE_SUMMARY_MAX_WORDS})"
+            )
+            return False
 
-        if word_count < 50:
-            self.warnings.append(f"Executive summary too short: {word_count} words (should be ≥50)")
+        if word_count < EXECUTIVE_SUMMARY_MIN_WORDS:
+            self.errors.append(
+                f"Executive summary too short: {word_count} words "
+                f"(should be ≥{EXECUTIVE_SUMMARY_MIN_WORDS})"
+            )
+            return False
 
         return True
 
     def _check_required_sections(self) -> bool:
-        """Check all required sections are present"""
-        required = [
-            "Executive Summary",
-            "Introduction",
-            "Main Analysis",
-            "Synthesis",
-            "Limitations",
-            "Recommendations",
-            "Bibliography",
-            "Methodology"
-        ]
+        """Check all required sections are present."""
 
         # Recommended sections (warnings if missing, not errors)
         recommended = [
@@ -99,9 +105,13 @@ class ReportValidator:
         ]
 
         missing = []
-        for section in required:
-            if not re.search(rf'##.*{section}', self.content, re.IGNORECASE):
-                missing.append(section)
+        for spec in REPORT_SECTION_SPECS:
+            patterns = [str(item) for item in spec["heading_patterns"]]
+            if not any(
+                re.search(pattern, self.content, re.MULTILINE | re.IGNORECASE)
+                for pattern in patterns
+            ):
+                missing.append(str(spec["title"]))
 
         if missing:
             self.errors.append(f"Missing sections: {', '.join(missing)}")
@@ -129,8 +139,11 @@ class ReportValidator:
 
         unique_citations = set(citations)
 
-        if len(unique_citations) < 10:
-            self.warnings.append(f"Only {len(unique_citations)} unique sources cited (recommended: ≥10)")
+        if len(unique_citations) < RECOMMENDED_MIN_SOURCES:
+            self.warnings.append(
+                f"Only {len(unique_citations)} unique sources cited "
+                f"(recommended: ≥{RECOMMENDED_MIN_SOURCES})"
+            )
 
         # Check for consecutive citation numbers
         citation_nums = sorted([int(c) for c in unique_citations])
@@ -248,7 +261,7 @@ class ReportValidator:
         """Check overall report length"""
         word_count = len(self.content.split())
 
-        if word_count < 500:
+        if word_count < MIN_REPORT_WORDS:
             self.warnings.append(f"Report is very short: {word_count} words (consider expanding)")
         # No upper limit warning - progressive assembly supports unlimited lengths
 
@@ -267,8 +280,10 @@ class ReportValidator:
 
         source_count = len(set(bib_entries))
 
-        if source_count < 10:
-            self.warnings.append(f"Only {source_count} sources (recommended: ≥10)")
+        if source_count < RECOMMENDED_MIN_SOURCES:
+            self.warnings.append(
+                f"Only {source_count} sources (recommended: ≥{RECOMMENDED_MIN_SOURCES})"
+            )
 
         return True
 
@@ -325,7 +340,7 @@ def main():
         epilog="""
 Examples:
   python validate_report.py --report report.md
-  python validate_report.py -r ~/.claude/research_output/research_report_20251104_153045.md
+  python validate_report.py -r ./research_20260404_quantum_computing/report.md
         """
     )
 

@@ -2,47 +2,79 @@
 
 ## When to Use
 
-Trigger auto-continuation when report exceeds 18,000 words in single run.
+Use continuation when the report becomes too large or too detailed to finish comfortably in a single pass.
+
+Typical triggers:
+
+- Report exceeds roughly 18,000 words
+- Too many findings remain for one clean generation pass
+- Citation tracking is becoming error-prone without an intermediate handoff
+
+**Hard requirement:** Continuation is not a manual convenience feature. If continuation is needed, the workflow should keep going until the report is complete unless the runtime or local helper is genuinely blocked.
+
+---
+
+## State Files
+
+**Always present:**
+
+- `./research_[YYYYMMDD]_[topic_slug]/run_state.json` - checkpoint state, phase results, section checkpoints, next-section batch, and resume entry point
+
+**Only when continuation is active:**
+
+- `./research_[YYYYMMDD]_[topic_slug]/continuation_state.json` - active handoff state for the next pass
 
 ---
 
 ## Strategy Overview
 
-1. Generate sections 1-10 (stay under 18K words)
-2. Save continuation state file with context preservation
-3. Spawn continuation agent via Task tool
-4. Continuation agent: Reads state -> Generates next batch -> Spawns next if needed
-5. Chain continues recursively until complete
+1. Generate the completed sections that fit in the current pass.
+2. Save or refresh `run_state.json`.
+3. If another pass is required, write `continuation_state.json`.
+4. Trigger the next pass automatically through the current runtime or the local orchestration helper.
+5. Continue until the bibliography and methodology appendix are complete.
+6. Validate the finished report, refresh `sources.json`, and delete `continuation_state.json`.
+
+---
+
+## Runtime Resolution Order
+
+Resolve continuation in this order:
+
+1. Native runtime continuation or delegated follow-on execution
+2. Local orchestration helper via either:
+   - `python scripts/research_engine.py --resume ./research_[YYYYMMDD]_[topic_slug]/run_state.json --runtime [codex|opencode|generic]`
+   - `python scripts/research_engine.py --resume ./research_[YYYYMMDD]_[topic_slug]/continuation_state.json --runtime [codex|opencode|generic]`
+3. Explicit blocker if neither path is available
+
+Do not silently stop after pass one when continuation is required. If native continuation is unavailable, use the explicit helper resume path.
 
 ---
 
 ## Continuation State File
 
-**Location:** `~/.claude/research_output/continuation_state_[report_id].json`
+**Location:** `./research_[YYYYMMDD]_[topic_slug]/continuation_state.json`
 
 ```json
 {
   "version": "2.1.1",
   "report_id": "[unique_id]",
-  "file_path": "[absolute_path_to_report.md]",
+  "file_path": "./research_[YYYYMMDD]_[topic_slug]/report.md",
   "mode": "[quick|standard|deep|ultradeep]",
-
   "progress": {
     "sections_completed": ["list of section IDs"],
     "total_planned_sections": 15,
     "word_count_so_far": 12000,
     "continuation_count": 1
   },
-
   "citations": {
-    "used": [1, 2, 3, "...", "N"],
+    "used": [1, 2, 3],
     "next_number": 45,
     "bibliography_entries": [
       "[1] Full citation entry",
       "[2] Full citation entry"
     ]
   },
-
   "research_context": {
     "research_question": "[original question]",
     "key_themes": ["theme1", "theme2"],
@@ -52,118 +84,102 @@ Trigger auto-continuation when report exceeds 18,000 words in single run.
     ],
     "narrative_arc": "middle"
   },
-
   "quality_metrics": {
     "avg_words_per_finding": 1500,
     "citation_density": 5.2,
     "prose_vs_bullets_ratio": "85% prose",
     "writing_style": "technical-precise-data-driven"
   },
-
+  "run_state_path": "./research_[YYYYMMDD]_[topic_slug]/run_state.json",
   "next_sections": [
-    {"id": 11, "type": "finding", "title": "Finding X", "target_words": 1500},
-    {"id": 12, "type": "synthesis", "title": "Synthesis", "target_words": 1000}
+    {"id": "finding_3", "type": "finding", "title": "Finding 3", "target_words": 1500, "heading": "### Finding 3: [Title]", "status": "pending"},
+    {"id": "synthesis_insights", "type": "synthesis", "title": "Synthesis & Insights", "target_words": 1000, "heading": "## Synthesis & Insights", "status": "pending"}
   ]
 }
 ```
 
 ---
 
-## Spawning Continuation Agent
+## Resume Protocol
 
-Use Task tool:
+When resuming a report:
 
-```
-Task(
-  subagent_type="general-purpose",
-  description="Continue deep-research report generation",
-  prompt="""
-CONTINUATION TASK: Continue existing deep-research report.
-
-CRITICAL INSTRUCTIONS:
-1. Read continuation state: ~/.claude/research_output/continuation_state_[report_id].json
-2. Read existing report: [file_path from state]
-3. Read LAST 3 completed sections for flow/style
-4. Load research context: themes, narrative arc, writing style
-5. Continue citation numbering from state.citations.next_number
-6. Maintain quality metrics (avg words, citation density, prose ratio)
-
-YOUR TASK:
-Generate next batch (stay under 18,000 words):
-[List next_sections from state]
-
-Use Write/Edit to append to: [file_path]
-
-QUALITY GATES:
-- Words per section: Within +/-20% of avg_words_per_finding
-- Citation density: Match +/-0.5 per 1K words
-- Prose ratio: Maintain >=80%
-- Theme alignment: Section ties to key_themes
-
-After generating:
-- If more sections remain: Update state, spawn next agent
-- If final sections: Generate bibliography, verify report, cleanup state
-"""
-)
-```
+1. Read `continuation_state.json` or `run_state.json`.
+2. If the entry file is `continuation_state.json`, load the sibling `run_state.json`.
+3. Read the existing `report.md`.
+4. Refresh section checkpoints from the current `report.md`.
+5. Review the last 2-3 completed sections for style and flow.
+6. Resume citation numbering from `citations.next_number`.
+7. Generate only the sections listed in `next_sections`.
+8. Update `report.md`, `sources.json`, `run_state.json`, `metadata.next_action`, and `continuation_state.json` after each completed section.
 
 ---
 
-## Continuation Agent Quality Protocol
+## Continuation Quality Protocol
 
-### Context Loading (CRITICAL)
+### Context Loading
 
-1. Read continuation_state.json -> Load ALL context
-2. Read existing report file -> Review last 3 sections
-3. Extract patterns:
-   - Sentence structure complexity
-   - Technical terminology used
-   - Citation placement patterns
-   - Paragraph transition style
+Before generating more content:
+
+1. Load the saved research context.
+2. Re-read the latest completed sections.
+3. Reconstruct the narrative arc.
+4. Confirm citation numbering and bibliography continuity.
+5. Confirm whether the next pass is running through a native runtime adapter or the local helper.
 
 ### Pre-Generation Checklist
 
-- [ ] Loaded research context (themes, question, narrative arc)
-- [ ] Reviewed previous sections for flow
-- [ ] Loaded citation numbering (start from N+1)
-- [ ] Loaded quality targets (words, density, style)
-- [ ] Understand narrative position (beginning/middle/end)
+- [ ] Research context loaded
+- [ ] Prior sections reviewed
+- [ ] Citation numbering resumed correctly
+- [ ] Quality targets understood
+- [ ] Remaining sections prioritized
 
 ### Per-Section Generation
 
-1. Generate section content
-2. Quality checks:
-   - Word count within +/-20%
-   - Citation density matches
-   - Prose ratio >=80%
-   - Theme connection verified
-   - Style consistent
-3. If ANY fails: Regenerate
-4. If passes: Write to file, update state
+1. Generate one section.
+2. Check word count, citation density, prose ratio, and theme alignment.
+3. If the section fails quality standards, regenerate before appending.
+4. Append the accepted section to `report.md`.
+5. Re-run the helper to refresh `sources.json`, `run_state.json`, and `continuation_state.json`.
 
 ### Handoff Decision
 
-Calculate: Current words + remaining sections x avg_words_per_section
-- If total < 18K: Generate all + finish
-- If total > 18K: Generate partial, update state, spawn next agent
+Calculate whether the remaining sections still fit in the current pass:
 
-### Final Agent Responsibilities
+- If yes, finish the report and remove `continuation_state.json`
+- If no, stop at the next clean section boundary, save an updated continuation state, and use the recorded resume command for the next pass
 
-- Generate final content sections
-- Generate COMPLETE bibliography from state.citations.bibliography_entries
-- Read entire assembled report
-- Run validation: `python scripts/validate_report.py --report [path]`
-- Delete continuation_state.json (cleanup)
-- Report complete to user
+---
+
+## Final Pass Responsibilities
+
+The final continuation pass must:
+
+- Generate all remaining content sections
+- Generate the complete bibliography
+- Re-run the helper so `sources.json` is refreshed from bibliography and cited snippets
+- Validate the assembled report with `python scripts/validate_report.py --report [path]`
+- Verify citations with `python scripts/verify_citations.py --report [path]`
+- Refresh `run_state.json` with the completed status
+- Delete `continuation_state.json` after the report is complete
+
+---
+
+## Blocker Rule
+
+If the runtime cannot continue on its own and the local helper cannot be executed, stop and report a blocker explicitly. Do not mark the report as complete.
 
 ---
 
 ## User Communication
 
-After spawning continuation:
-```
-Report Generation: Part 1 Complete (N sections, X words)
-Auto-continuing via spawned agent...
-   Next batch: [section list]
-   Progress: [X%] complete
+When handing off to another automatic pass, communicate:
+
+```text
+Report generation reached a clean section boundary.
+Progress: [X sections complete, Y words total]
+Next sections: [section list]
+State saved to: ./research_[YYYYMMDD]_[topic_slug]/continuation_state.json
+Auto-continuing via native runtime or local helper.
 ```

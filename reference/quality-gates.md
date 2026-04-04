@@ -5,7 +5,7 @@
 ### Citation Verification
 
 ```bash
-python scripts/verify_citations.py --report [path]
+python scripts/verify_citations.py --report ./research_[YYYYMMDD]_[topic_slug]/report.md
 ```
 
 **Checks:**
@@ -18,11 +18,11 @@ python scripts/verify_citations.py --report [path]
 ### Structure & Quality Validation
 
 ```bash
-python scripts/validate_report.py --report [path]
+python scripts/validate_report.py --report ./research_[YYYYMMDD]_[topic_slug]/report.md
 ```
 
 **9 automated checks:**
-1. Executive summary length (200-400 words)
+1. Executive summary length (50-400 words)
 2. Required sections present
 3. Citations formatted [1], [2], [3]
 4. Bibliography matches citations
@@ -156,12 +156,13 @@ Before considering section complete:
 **Every report must have:**
 - 10+ sources (document if fewer)
 - 3+ sources per major claim
-- Executive summary 200-400 words
+- Executive summary 50-400 words
 - Full citations with URLs
-- Credibility assessment
+- Optional credibility assessment when source metadata is available
 - Limitations section
 - Methodology documented
 - No placeholders
+- All report artifacts stored together in the report directory
 
 **Priority:** Thoroughness over speed. Quality > speed.
 

@@ -5,36 +5,37 @@ PROGRESSIVE FILE ASSEMBLY STRATEGY (2025 - Unlimited Length):
 
 This report is generated section-by-section using progressive file assembly.
 Each section is generated to APPROPRIATE depth (however many words needed) and
-written to file immediately using Write/Edit tools.
+written to file immediately using the current environment's file editing workflow.
 
 WHY: Manages output token limits while maintaining quality throughout
 RESULT: Large reports (up to 20,000 words per skill run) - sections sized naturally by content
 
-CLAUDE CODE LIMIT: 32,000 output tokens (≈20,000 words max per run)
-For reports >20,000 words: Run skill multiple times for different parts
+PRACTICAL LIMIT: Keep each generation comfortably reviewable in one pass
+For reports >20,000 words: Continue across multiple passes using continuation state
+Keep `run_state.json` current throughout the run; create `continuation_state.json` only when another pass is required
 
 GENERATION WORKFLOW:
-1. Generate Executive Summary → Write to file
+1. Generate Executive Summary → write to file
    (As long as needed for comprehensive summary)
 
-2. Generate Introduction → Edit/append to file
+2. Generate Introduction → append to file
    (As long as needed to establish context)
 
-3. Generate Finding 1 → Edit/append to file
+3. Generate Finding 1 → append to file
    (As long as needed to fully present evidence and analysis)
 
-4. Generate Finding 2 → Edit/append to file
+4. Generate Finding 2 → append to file
    (Each finding sized appropriately - some may need 300 words, others 1,500)
 
 5. Continue for ALL findings (no limit on number OR length per finding!)
 
-6. Generate Synthesis → Edit/append to file
+6. Generate Synthesis → append to file
    (As long as needed for deep synthesis)
 
-7. Generate Limitations → Edit/append to file
-8. Generate Recommendations → Edit/append to file
-9. Generate Bibliography (ALL citations) → Edit/append to file
-10. Generate Methodology → Edit/append to file
+7. Generate Limitations → append to file
+8. Generate Recommendations → append to file
+9. Generate Bibliography (ALL citations) → append to file
+10. Generate Methodology → append to file
 
 SIZING PRINCIPLE:
 - Each section should be as long as IT NEEDS TO BE
@@ -76,10 +77,11 @@ CITATION TRACKING (CRITICAL):
 <!-- ✅ REQUIRED: Generate current section COMPLETELY (you're only writing 500 words!) -->
 <!-- ✅ REQUIRED: Write to file immediately, then move to next section -->
 <!-- Progressive assembly handles unlimited length - you handle quality per section -->
+<!-- If another pass is required, auto-continue through the runtime adapter or local helper -->
 
 ## Executive Summary
 
-[Write 3-5 bullet points, 200-400 words total]
+[Write 3-5 bullet points, 50-400 words total]
 - **Key Finding 1:** [Major discovery with specific data/metrics]
 - **Key Finding 2:** [Important insight with evidence]
 - **Key Finding 3:** [Critical conclusion with implications]

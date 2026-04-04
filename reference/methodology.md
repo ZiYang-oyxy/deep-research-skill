@@ -2,415 +2,345 @@
 
 ## Overview
 
-This document contains the detailed methodology for conducting deep research. The 8 phases represent a comprehensive approach to gathering, verifying, and synthesizing information from multiple sources.
+This document defines the deep-research workflow used to gather, verify, and synthesize information from multiple sources. The phases are sequential by default, but evidence discovered in later phases may require returning to retrieval or outline refinement.
+
+Three capabilities are non-negotiable in the default workflow:
+
+- Parallel deep-dive retrieval in `standard`, `deep`, and `ultradeep`
+- Persona-based red-team critique in `deep` and `ultradeep`
+- Continuation handoff when the report outgrows one clean pass
 
 ---
 
 ## Phase 1: SCOPE - Research Framing
 
-**Objective:** Define research boundaries and success criteria
+**Objective:** Define research boundaries and success criteria.
 
 **Activities:**
-1. Decompose the question into core components
-2. Identify stakeholder perspectives
-3. Define scope boundaries (what's in/out)
-4. Establish success criteria
-5. List key assumptions to validate
+1. Decompose the question into core components.
+2. Identify stakeholder perspectives.
+3. Define scope boundaries.
+4. Establish success criteria.
+5. List assumptions that require validation.
 
-**Ultrathink Application:** Use extended reasoning to explore multiple framings of the question before committing to scope.
+**Reasoning guidance:** Explore multiple framings before committing to scope.
 
-**Output:** Structured scope document with research boundaries
+**Output:** Structured scope with boundaries, audience, risks, and assumptions.
+
+**Artifact contract:** Persist framing evidence in `phase_scope.json`. The helper requires non-empty `core_components`, `in_scope`, `success_criteria`, and `assumptions`.
 
 ---
 
 ## Phase 2: PLAN - Strategy Formulation
 
-**Objective:** Create an intelligent research roadmap
+**Objective:** Create an efficient research roadmap.
 
 **Activities:**
-1. Identify primary and secondary sources
-2. Map knowledge dependencies (what must be understood first)
-3. Create search query strategy with variants
-4. Plan triangulation approach
-5. Estimate time/effort per phase
-6. Define quality gates
+1. Identify primary and secondary source types.
+2. Map knowledge dependencies.
+3. Draft 5-15 search query variants.
+4. Plan how claims will be triangulated.
+5. Estimate time and effort by phase.
+6. Define quality gates for moving forward.
 
-**Graph-of-Thoughts:** Branch into multiple potential research paths, then converge on optimal strategy.
+**Reasoning guidance:** Branch into multiple viable research paths, then converge on the best path.
 
-**Output:** Research plan with prioritized investigation paths
+**Output:** Research plan with prioritized investigation paths and verification strategy.
+
+**Artifact contract:** Persist planning evidence in `phase_plan.json`. The helper requires non-empty `primary_source_types`, at least 5 `search_queries`, plus explicit `triangulation_strategy` and `quality_gates`.
 
 ---
 
 ## Phase 3: RETRIEVE - Parallel Information Gathering
 
-**Objective:** Systematically collect information from multiple sources using parallel execution for maximum speed
+**Objective:** Systematically collect information from multiple source types as quickly as possible without sacrificing quality.
 
-**CRITICAL: Execute ALL searches in parallel using a single message with multiple tool calls**
+**Critical rule:** Use the current environment's available browse/search capabilities aggressively, and batch independent searches when the tooling allows it.
+
+**Runtime adaptation rule:** In `standard`, `deep`, and `ultradeep`, you must also run 2-3 focused deep-dive tracks. Resolve this requirement in order:
+
+1. Native runtime delegation or subagents
+2. Local orchestration helper and isolated evidence tracks
+3. Explicit blocker if neither path is available
+
+Do not silently skip the deep-dive tracks.
+
+**Artifact contract:** Persist completion evidence in `phase_retrieve.json`. The helper treats the contract as satisfied only when the artifact records broad retrieval plus at least 2 completed deep-dive tracks with non-zero evidence counts.
 
 ### Query Decomposition Strategy
 
-Before launching searches, decompose the research question into 5-10 independent search angles:
+Before launching searches, break the question into 5-10 independent angles:
 
-1. **Core topic (semantic search)** - Meaning-based exploration of main concept
-2. **Technical details (keyword search)** - Specific terms, APIs, implementations
-3. **Recent developments (date-filtered)** - What's new in last 12-18 months (use current date from Step 0)
-4. **Academic sources (domain-specific)** - Papers, research, formal analysis
-5. **Alternative perspectives (comparison)** - Competing approaches, criticisms
-6. **Statistical/data sources** - Quantitative evidence, metrics, benchmarks
-7. **Industry analysis** - Commercial applications, market trends
-8. **Critical analysis/limitations** - Known problems, failure modes, edge cases
+1. **Core topic** - Meaning-based exploration of the central concept
+2. **Technical details** - Specific terms, APIs, implementations, mechanisms
+3. **Recent developments** - What changed in the last 12-18 months
+4. **Academic/formal sources** - Papers, standards, formal evaluations
+5. **Alternative perspectives** - Competing approaches and criticisms
+6. **Data sources** - Quantitative evidence, metrics, benchmarks
+7. **Industry/commercial analysis** - Adoption, market movement, vendor claims
+8. **Failure modes and limitations** - Known problems, edge cases, and risks
 
-### Parallel Execution Protocol
+### Retrieval Protocol
 
 **Step 0: Get the current date**
 
-Before ANY searches, retrieve today's date using Bash: `date +%Y-%m-%d`
-Use the returned year for all date-filtered queries and recency checks. Do NOT assume a year from training data.
+Before any time-sensitive search, retrieve today's date from the environment and use that exact date or year in recentness-sensitive queries. Do not assume the current year from prior context.
 
-**Step 1: Launch ALL searches concurrently (single message)**
+**Step 1: Launch broad retrieval**
 
-**CRITICAL: Use correct tool and parameters to avoid errors**
+Start with parallel or batched searches across the angles above using whatever search and browsing tools the current environment supports. Prefer source diversity over depth in the first pass.
 
-Choose ONE search approach per research session:
+**Step 1.5: Launch focused deep-dive tracks**
 
-**Option A: Use WebSearch (built-in, no MCP required)**
-- Standard web search with simple query string
-- Parameters: `query` (required)
-- Optional: `allowed_domains`, `blocked_domains`
-- Example: `WebSearch(query="quantum computing 2025")`
+In `standard`, `deep`, and `ultradeep`, add 2-3 focused tracks such as:
 
-**Option B: Use Exa MCP (if available, more powerful)**
-- Advanced semantic + keyword search
-- Tool name: `mcp__Exa__exa_search`
-- Parameters: `query` (required), `type` (auto/neural/keyword), `num_results`, `start_published_date`, `include_domains`
-- Example: `mcp__Exa__exa_search(query="quantum computing", type="neural", num_results=10)`
+- Primary-source or academic deep extraction
+- Counterevidence and limitations review
+- Implementation, commercial, or domain-specific validation
 
-**Option C: Use search-cli (if installed, multi-provider)**
-- Unified CLI aggregating Brave, Serper, Exa, Jina, and Firecrawl
-- Install: `brew tap 199-biotechnologies/tap && brew install search-cli`
-- Requires API keys: `search config set keys.[provider] YOUR_KEY`
-- Auto-detects best provider per query type (academic, news, general, people)
-- JSON output for structured processing: `search "query" --json`
-- Modes: general, news, academic, scholar, patents, people, images, extract, scrape
-- Example: `search "quantum computing 2025" -m academic --json -c 15`
-- **First-time setup:** Ask user if they want to install search-cli and configure API keys
+Each track should return structured evidence objects, not free-form notes.
 
+**Step 2: Deepen the strongest leads**
 
-**NEVER mix parameter styles** - this causes "Invalid tool parameters" errors.
+For the most promising sources:
 
-**Step 2: Spawn parallel deep-dive agents**
+- Open the original page, paper, filing, documentation page, or repository
+- Extract the exact claim, supporting evidence, publication/update date, and source identity
+- Record enough metadata to re-check the source later
+- Note any gaps or contradictions discovered during reading
 
-Use Task tool with general-purpose agents (3-5 agents) for:
-- Academic paper analysis (PDFs, detailed extraction)
-- Documentation deep dives (technical specs, API docs)
-- Repository analysis (code examples, implementations)
-- Specialized domain research (requires multi-step investigation)
+**Step 3: Follow targeted tangents**
 
-**Sub-agent output format:** Require all sub-agents to return structured evidence, not free text:
+Run additional focused searches only for:
+
+- Gaps that block synthesis
+- Contradictions between high-value sources
+- Claims that appear important but remain weakly sourced
+- Missing stakeholder or geographic perspectives
+- Gaps surfaced by deep-dive tracks or critique personas
+
+### Evidence Object Format
+
+Whenever possible, normalize each piece of evidence into a structure like:
+
 ```json
-{"claim": "specific claim text", "evidence_quote": "exact quote from source", "source_url": "https://...", "source_title": "...", "confidence": 0.85}
-```
-This prevents synthesis fatigue when merging results from 3-5 agents.
-
-**Example parallel execution (using WebSearch):**
-```
-[Single message with multiple tool calls]
-- WebSearch(query="quantum computing 2025 state of the art")
-- WebSearch(query="quantum computing limitations challenges")
-- WebSearch(query="quantum computing commercial applications [CURRENT_YEAR]")
-- WebSearch(query="quantum computing vs classical comparison")
-- WebSearch(query="quantum error correction research", allowed_domains=["arxiv.org", "scholar.google.com"])
-- Task(subagent_type="general-purpose", description="Analyze quantum computing papers", prompt="Deep dive into quantum computing academic papers from [CURRENT_YEAR], extract key findings and methodologies")
-- Task(subagent_type="general-purpose", description="Industry analysis", prompt="Analyze quantum computing industry reports and market data, identify commercial applications")
-- Task(subagent_type="general-purpose", description="Technical challenges", prompt="Extract technical limitations and challenges from quantum computing research")
+{
+  "claim": "specific claim text",
+  "evidence_quote": "exact quote or precise paraphrase from source",
+  "source_url": "https://...",
+  "source_title": "...",
+  "published_at": "YYYY-MM-DD or unknown",
+  "source_type": "academic|news|documentation|industry|government|other",
+  "confidence": 0.85
+}
 ```
 
-**Example parallel execution (using Exa MCP - if available):**
-```
-[Single message with multiple tool calls]
-- mcp__Exa__exa_search(query="quantum computing state of the art", type="neural", num_results=10, start_published_date="[use current year from Step 0]")
-- mcp__Exa__exa_search(query="quantum computing limitations", type="keyword", num_results=10)
-- mcp__Exa__exa_search(query="quantum computing commercial", type="auto", num_results=10, start_published_date="[use current year from Step 0]")
-- mcp__Exa__exa_search(query="quantum error correction", type="neural", num_results=10, include_domains=["arxiv.org"])
-- Task(subagent_type="general-purpose", description="Academic analysis", prompt="Analyze quantum computing academic papers")
-```
-
-**Step 3: Collect and organize results**
-
-As results arrive:
-1. Extract key passages with source metadata (title, URL, date, credibility)
-2. Track information gaps that emerge
-3. Follow promising tangents with additional targeted searches
-4. Maintain source diversity (mix academic, industry, news, technical docs)
-5. Monitor for quality threshold (see FFS pattern below)
+This keeps synthesis manageable and reduces citation drift.
 
 ### First Finish Search (FFS) Pattern
 
-**Adaptive completion based on quality threshold:**
+Proceed to Phase 4 when the first quality threshold is reached:
 
-**Quality gate:** Proceed to Phase 4 when FIRST threshold reached:
-- **Quick mode:** 10+ sources with avg credibility >60/100 OR 2 minutes elapsed
-- **Standard mode:** 15+ sources with avg credibility >60/100 OR 5 minutes elapsed
-- **Deep mode:** 25+ sources with avg credibility >70/100 OR 10 minutes elapsed
-- **UltraDeep mode:** 30+ sources with avg credibility >75/100 OR 15 minutes elapsed
+- **Quick mode:** 10+ sources with average credibility above 60/100 or 2 minutes elapsed
+- **Standard mode:** 15+ sources with average credibility above 60/100 or 5 minutes elapsed
+- **Deep mode:** 25+ sources with average credibility above 70/100 or 10 minutes elapsed
+- **UltraDeep mode:** 30+ sources with average credibility above 75/100 or 15 minutes elapsed
 
-**Continue background searches:**
-- If threshold reached early, continue remaining parallel searches in background
-- Additional sources used in Phase 5 (SYNTHESIZE) for depth and diversity
-- Allows fast progression without sacrificing thoroughness
+If searches are still in flight after the threshold is reached, keep the useful ones going while Phase 4 and Phase 5 begin.
 
 ### Quality Standards
 
 **Source diversity requirements:**
-- Minimum 3 source types (academic, industry, news, technical docs)
-- Temporal diversity (mix of recent 12-18 months + foundational older sources)
-- Perspective diversity (proponents + critics + neutral analysis)
-- Geographic diversity (not just US sources)
+
+- Minimum 3 source types across the report
+- Temporal diversity: recent sources plus foundational older sources when relevant
+- Perspective diversity: proponents, critics, and neutral analysis
+- Geographic diversity when the question is global
 
 **Credibility tracking:**
-- Score each source 0-100 using source_evaluator.py
-- Flag low-credibility sources (<40) for additional verification
-- Prioritize high-credibility sources (>80) for core claims
 
-**Techniques:**
-- Use WebSearch for current information (primary tool)
-- Use search-cli for multi-provider aggregated search (if installed)
-- Use WebFetch for deep dives into specific sources (secondary)
-- Use Exa search (via WebSearch with type="neural") for semantic exploration
-- Use Grep/Read for local documentation
-- Execute code for computational analysis (when needed)
-- Use Task tool to spawn parallel retrieval agents (3-5 agents)
+- Score each source 0-100 using `source_evaluator.py` or equivalent reasoning
+- Flag low-credibility sources below 40 for extra verification
+- Prioritize high-credibility sources above 80 for core claims
 
-**Output:** Organized information repository with source tracking, credibility scores, and coverage map
+**Allowed techniques:**
+
+- Web or database search available in the current environment
+- Direct browsing/opening of original source pages
+- Local shell and repository scripts for parsing, extraction, or validation
+- Local file search for in-repo documentation
+- Native runtime delegation when available
+- Local orchestration helper when native delegation is unavailable
+
+**Output:** Organized source inventory with citations, credibility scores, and identified gaps.
 
 ---
 
 ## Phase 4: TRIANGULATE - Cross-Reference Verification
 
-**Objective:** Validate information across multiple independent sources
+**Objective:** Validate information across multiple independent sources.
 
 **Activities:**
-1. Identify claims requiring verification
-2. Cross-reference facts across 3+ sources
-3. Flag contradictions or uncertainties
-4. Assess source credibility
-5. Note consensus vs. debate areas
-6. Document verification status per claim
+1. Identify claims requiring verification.
+2. Cross-reference facts across 3+ sources when possible.
+3. Flag contradictions or uncertainty.
+4. Assess source credibility and bias.
+5. Note consensus areas vs. contested areas.
+6. Assign a verification status to each major claim.
 
-**Quality Standards:**
-- Core claims must have 3+ independent sources
-- Flag any single-source information
-- Note recency of information
-- Identify potential biases
+**Quality standards:**
+- Core claims should have 3+ independent sources.
+- Clearly label single-source claims.
+- Note recency where it affects reliability.
+- Identify likely bias sources and conflicts of interest.
 
-**Output:** Verified fact base with confidence levels
+**Output:** Verified fact base with confidence levels and unresolved conflicts.
+
+**Artifact contract:** Persist verification evidence in `phase_triangulate.json`. The helper requires non-empty `claim_checks`, explicit `verification_status` values, supporting sources for each claim, and at least one `consensus_topics` or `contested_topics` entry.
 
 ---
 
-## Phase 4.5: OUTLINE REFINEMENT - Dynamic Evolution (WebWeaver 2025)
+## Phase 4.5: OUTLINE REFINEMENT - Dynamic Evolution
 
-**Objective:** Adapt research direction based on evidence discovered
+**Objective:** Adapt the report structure when the evidence points somewhere different from the initial plan.
 
-**Problem Solved:** Prevents "locked-in" research when evidence points to different conclusions or uncovers more important angles than initially planned.
-
-**When to Execute:**
-- **Standard/Deep/UltraDeep modes only** (Quick mode skips this)
-- After Phase 4 (TRIANGULATE) completes
-- Before Phase 5 (SYNTHESIZE)
+**When to execute:**
+- Standard, Deep, and UltraDeep modes
+- After Phase 4
+- Before Phase 5
 
 **Activities:**
+1. Compare the original scope with what the evidence actually supports.
+2. Identify unexpected patterns, contradictions, or emerging subtopics.
+3. Promote important angles that became central during retrieval.
+4. Demote sections that no longer deserve space.
+5. Tighten or widen scope if the original framing proved mis-sized.
+6. Run a short targeted gap-fill round if the refined outline exposes a critical missing angle.
 
-1. **Review Initial Scope vs. Actual Findings**
-   - Compare Phase 1 scope with Phase 3-4 discoveries
-   - Identify unexpected patterns or contradictions
-   - Note underexplored angles that emerged as critical
-   - Flag overexplored areas that proved less important
+**Quality standards:**
 
-2. **Evaluate Outline Adaptation Need**
+- Refinement must be evidence-driven, not speculative
+- New sections must already have supporting evidence or an explicit gap-fill plan
+- Do not drift away from the original research question without documenting why
 
-   **Signals for adaptation (ANY triggers refinement):**
-   - Major findings contradict initial assumptions
-   - Evidence reveals more important angle than originally scoped
-   - Critical subtopic emerged that wasn't in original plan
-   - Original research question was too broad/narrow based on evidence
-   - Sources consistently discuss aspects not in initial outline
+**Output:** Revised outline aligned to the strongest evidence.
 
-   **Signals to keep current outline:**
-   - Evidence aligns with initial scope
-   - All key angles adequately covered
-   - No major gaps or surprises
-
-3. **Refine Outline (if needed)**
-
-   **Update structure to reflect evidence:**
-   - Add sections for unexpected but important findings
-   - Demote/remove sections with insufficient evidence
-   - Reorder sections based on evidence strength and importance
-   - Adjust scope boundaries based on what's actually discoverable
-
-   **Example adaptation:**
-   ```
-   Original outline:
-   1. Introduction
-   2. Technical Architecture
-   3. Performance Benchmarks
-   4. Conclusion
-
-   Refined after Phase 4 (evidence revealed security as critical):
-   1. Introduction
-   2. Technical Architecture
-   3. **Security Vulnerabilities (NEW - major finding)**
-   4. Performance Benchmarks (demoted - less critical than expected)
-   5. **Real-World Failure Modes (NEW - pattern emerged)**
-   6. Synthesis & Recommendations
-   ```
-
-4. **Targeted Gap Filling (if major gaps found)**
-
-   If outline refinement reveals critical knowledge gaps:
-   - Launch 2-3 targeted searches for newly identified angles
-   - Quick retrieval only (don't restart full Phase 3)
-   - Time-box to 2-5 minutes
-   - Update triangulation for new evidence only
-
-5. **Document Adaptation Rationale**
-
-   Record in methodology appendix:
-   - What changed in outline
-   - Why it changed (evidence-driven reasons)
-   - What additional research was conducted (if any)
-
-**Quality Standards:**
-- Adaptation must be evidence-driven (cite specific sources that prompted change)
-- No more than 50% outline restructuring (if more needed, scope was severely mis scoped)
-- Retain original research question core (don't drift into different topic entirely)
-- New sections must have supporting evidence already gathered
-
-**Output:** Refined outline that accurately reflects evidence landscape, ready for synthesis
-
-**Anti-Pattern Warning:**
-- ❌ DON'T adapt outline based on speculation or "what would be interesting"
-- ❌ DON'T add sections without supporting evidence already in hand
-- ❌ DON'T completely abandon original research question
-- ✅ DO adapt when evidence clearly indicates better structure
-- ✅ DO document rationale for changes
-- ✅ DO stay within original topic scope
+**Artifact contract:** Persist outline decisions in `phase_outline_refinement.json`. The helper requires `decision`, non-empty `evidence_driven_rationale`, `final_outline_sections`, and `gap_fill_queries` whenever `critical_gap_fill_required=true`.
 
 ---
 
-## Phase 5: SYNTHESIZE - Deep Analysis
+## Phase 5: SYNTHESIZE - Insight Generation
 
-**Objective:** Connect insights and generate novel understanding
+**Objective:** Connect findings into a coherent, useful report.
 
 **Activities:**
-1. Identify patterns across sources
-2. Map relationships between concepts
-3. Generate insights beyond source material
-4. Create conceptual frameworks
-5. Build argument structures
-6. Develop evidence hierarchies
+1. Identify patterns across sources.
+2. Map relationships between concepts.
+3. Generate insights that go beyond any single source.
+4. Build an argument structure for the report.
+5. Separate facts, interpretation, and speculation clearly.
 
-**Ultrathink Integration:** Use extended reasoning to explore non-obvious connections and second-order implications.
+**Output:** Synthesized narrative with evidence-backed insights and implications.
 
-**Output:** Synthesized understanding with insight generation
+**Artifact contract:** Persist synthesis evidence in `phase_synthesize.json`. The helper requires non-empty `patterns`, `key_arguments`, and `synthesis_summary`.
 
 ---
 
-## Phase 6: CRITIQUE - Quality Assurance
+## Phase 6: CRITIQUE - Adversarial Review
 
-**Objective:** Rigorously evaluate research quality
+**Objective:** Pressure-test research quality before final packaging.
 
 **Activities:**
-1. Review for logical consistency
-2. Check citation completeness
-3. Identify gaps or weaknesses
-4. Assess balance and objectivity
-5. Verify claims against sources
-6. Test alternative interpretations
+1. Check logical consistency.
+2. Verify citation completeness.
+3. Identify weak evidence chains.
+4. Test alternative explanations.
+5. Challenge assumptions and blind spots.
+6. Decide which issues require returning to retrieval or refinement.
 
-**Red Team Questions:**
-- What's missing?
-- What could be wrong?
-- What alternative explanations exist?
-- What biases might be present?
-- What counterfactuals should be considered?
+**Mandatory personas in `deep` and `ultradeep`:**
 
-**Persona-Based Critique (Deep/UltraDeep only):**
-Simulate 2-3 specific critic personas relevant to the topic:
-- "Skeptical Practitioner" — Would someone doing this daily trust these findings?
-- "Adversarial Reviewer" — What would a peer reviewer reject?
-- "Implementation Engineer" — Can these recommendations actually be executed?
+- `Skeptical Practitioner` - Would someone doing this work daily trust the findings?
+- `Adversarial Reviewer` - What would a hostile reviewer or peer reject?
+- `Implementation Engineer` - Can the recommendations actually be executed?
 
-**Critical Gap Loop-Back:**
-If critique identifies a critical knowledge gap (not just a writing issue), return to Phase 3 with targeted "delta-queries" before proceeding to Phase 7. Time-box to 3-5 minutes. This prevents publishing reports with known blind spots.
+**Critical gap loop-back:**
 
-**Output:** Critique report with improvement recommendations
+If any persona or critique pass identifies a critical knowledge gap, return to targeted retrieval with delta queries before moving to final packaging.
+
+**Artifact contract:** Persist critique evidence in `phase_critique.json`. The helper requires all three personas to be marked complete, and when `critical_gap_found=true`, it also requires `delta_queries_run` to be non-empty.
+
+**Output:** Structured critique with prioritized issues and remediation steps.
 
 ---
 
-## Phase 7: REFINE - Iterative Improvement
+## Phase 7: REFINE - Gap Closure
 
-**Objective:** Address gaps and strengthen weak areas
+**Objective:** Address the highest-priority weaknesses from critique.
 
 **Activities:**
-1. Conduct additional research for gaps
-2. Strengthen weak arguments
-3. Add missing perspectives
-4. Resolve contradictions
-5. Enhance clarity
-6. Verify revised content
+1. Run targeted follow-up retrieval.
+2. Strengthen weak claims with better evidence.
+3. Add missing perspectives.
+4. Resolve contradictions where possible.
+5. Improve clarity and structure.
+6. Re-verify revised sections.
 
-**Output:** Strengthened research with addressed deficiencies
+**Output:** Strengthened report with documented improvements.
+
+**Artifact contract:** Persist refinement evidence in `phase_refine.json`. The helper requires `addressed_issues`, at least one of `follow_up_retrieval` or `strengthened_claims`, and non-empty `verification_notes`.
 
 ---
 
 ## Phase 8: PACKAGE - Report Generation
 
-**Objective:** Deliver professional, actionable research
+**Objective:** Deliver a professional, actionable research report.
 
 **Activities:**
-1. Structure report with clear hierarchy
-2. Write executive summary
-3. Develop detailed sections
-4. Create visualizations (tables, diagrams)
-5. Compile full bibliography
-6. Add methodology appendix
+1. Structure the report with clear hierarchy.
+2. Write the executive summary.
+3. Develop detailed findings.
+4. Add tables or diagrams only when they improve comprehension.
+5. Compile a complete bibliography.
+6. Add a methodology appendix.
+7. Validate structure and citations before delivery.
 
-**Output:** Complete research report ready for use
+**Output:** Completed report package in the report directory.
 
 ---
 
 ## Advanced Features
 
-### Graph-of-Thoughts Reasoning
+### Multi-Path Reasoning
 
-Rather than linear thinking, branch into multiple reasoning paths:
-- Explore alternative framings in parallel
-- Pursue tangential leads that might be relevant
-- Merge insights from different branches
-- Backtrack and revise as new information emerges
+Rather than thinking linearly, explore multiple candidate framings or hypotheses, then converge once evidence is strong enough.
 
-### Parallel Agent Deployment
+### Independent Verification Rounds
 
-Use Task tool to spawn sub-agents for:
-- Parallel source retrieval
-- Independent verification paths
-- Competing hypothesis evaluation
-- Specialized domain analysis
+Use separate retrieval passes to check whether the same claim still holds when queried from a different angle, source type, or keyword set.
+
+### Runtime-Aware Orchestration
+
+Treat runtime differences as an execution concern, not a reason to drop quality:
+
+- Prefer native delegation and continuation when available
+- Fall back to the local orchestration helper when native support is missing
+- Report a blocker instead of silently downgrading non-negotiable capabilities
 
 ### Adaptive Depth Control
 
-Automatically adjust research depth based on:
-- Information complexity
+Adjust depth based on:
+
+- Complexity of the question
 - Source availability
-- Time constraints
-- Confidence levels
+- Stakes of the decision
+- Remaining uncertainty after triangulation
 
 ### Citation Intelligence
 
-Smart citation management:
-- Track provenance of every claim
-- Link to original sources
-- Assess source credibility
-- Handle conflicting sources
-- Generate proper bibliographies
+Maintain provenance for every major claim:
+
+- Which source supports it
+- What exact evidence was used
+- How credible the source is
+- Whether the claim is consensus, contested, or tentative
