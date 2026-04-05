@@ -6,6 +6,7 @@ section-level checkpoints, and continuation state management.
 """
 
 import argparse
+import builtins
 import json
 import re
 import shlex
@@ -22,6 +23,12 @@ from report_contract import (
     REPORT_SECTION_TITLES,
     SECTION_PATTERNS_BY_ID,
 )
+
+
+def print(*args, **kwargs):
+    """Force line-buffer-like behavior even when stdout/stderr are piped."""
+    kwargs.setdefault("flush", True)
+    return builtins.print(*args, **kwargs)
 
 
 class ResearchPhase(Enum):
@@ -53,6 +60,7 @@ class RuntimeAdapter(Enum):
 
 
 STATE_VERSION = "2.2.0"
+AUTO_CONTINUE_HEARTBEAT_SECONDS = 5.0
 
 
 DEFAULT_PASS_WORD_BUDGET = {
@@ -1336,6 +1344,22 @@ class ResearchEngine:
                 continue
         return False
 
+    def _format_watched_paths(self, paths: List[Path]) -> str:
+        """Render watched paths with current existence and timestamp information."""
+        lines: List[str] = []
+        for path in paths:
+            try:
+                stat = path.stat()
+            except FileNotFoundError:
+                lines.append(f"  - {path} [missing]")
+                continue
+
+            modified_at = datetime.fromtimestamp(stat.st_mtime).isoformat(timespec="seconds")
+            lines.append(
+                f"  - {path} [exists, mtime={modified_at}, size={stat.st_size}B]"
+            )
+        return "\n".join(lines)
+
     def _wait_for_watched_paths(
         self,
         paths: List[Path],
@@ -1345,14 +1369,41 @@ class ResearchEngine:
         """Wait until any watched file changes or the deadline expires."""
         baseline = self._snapshot_paths(paths)
         interval = max(poll_interval, 0.1)
+        heartbeat_interval = max(AUTO_CONTINUE_HEARTBEAT_SECONDS, interval)
+        wait_started_at = time.monotonic()
+        next_heartbeat_at = wait_started_at + heartbeat_interval
+
+        print("Auto-continue: entering wait state for watched files:")
+        print(self._format_watched_paths(paths))
 
         while True:
-            if deadline is not None and time.monotonic() >= deadline:
+            now = time.monotonic()
+            if deadline is not None and now >= deadline:
                 return False
 
             time.sleep(interval)
-            if self._snapshot_paths(paths) != baseline:
+            current_snapshot = self._snapshot_paths(paths)
+            if current_snapshot != baseline:
+                print("Auto-continue: detected watched file change; continuing.")
+                print(self._format_watched_paths(paths))
                 return True
+
+            now = time.monotonic()
+            if now >= next_heartbeat_at:
+                elapsed = int(now - wait_started_at)
+                if deadline is None:
+                    print(
+                        "Auto-continue heartbeat: still waiting for file updates "
+                        f"after {elapsed}s."
+                    )
+                else:
+                    remaining = max(0, int(deadline - now))
+                    print(
+                        "Auto-continue heartbeat: still waiting for file updates "
+                        f"after {elapsed}s (timeout in {remaining}s)."
+                    )
+                print(self._format_watched_paths(paths))
+                next_heartbeat_at = now + heartbeat_interval
 
     def auto_continue_until_complete(
         self,
@@ -1404,8 +1455,8 @@ class ResearchEngine:
                 )
             else:
                 print(
-                    "Auto-continue: waiting for file updates before resuming. "
-                    + ", ".join(str(path) for path in watch_paths)
+                    "Auto-continue: waiting for file updates before resuming.\n"
+                    + self._format_watched_paths(watch_paths)
                 )
                 if not self._wait_for_watched_paths(watch_paths, poll_interval, deadline):
                     print(
@@ -2476,6 +2527,7 @@ Examples:
             print(f"Error: State file not found: {state_file}", file=sys.stderr)
             sys.exit(1)
 
+        print(f"Loading resume state from: {state_file}")
         try:
             resume_kind = engine.load_resume_state(state_file)
         except (FileNotFoundError, KeyError, json.JSONDecodeError, ValueError) as exc:
