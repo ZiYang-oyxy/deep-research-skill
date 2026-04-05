@@ -9,6 +9,3 @@
 #   Config:  search config set keys.[provider] YOUR_KEY
 #   Repo:    https://github.com/199-biotechnologies/search-cli
 #
-# weasyprint — PDF generation from HTML reports
-#   Install: pip install weasyprint
-#   Used by: reference/html-generation.md (Phase 8 PDF output)

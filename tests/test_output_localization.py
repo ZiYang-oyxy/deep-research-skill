@@ -10,7 +10,6 @@ SCRIPTS_DIR = REPO_ROOT / "scripts"
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
-from md_to_html import convert_markdown_to_html  # noqa: E402
 from verify_citations import CitationVerifier  # noqa: E402
 
 
@@ -33,25 +32,6 @@ class OutputLocalizationTests(unittest.TestCase):
             self.assertEqual(entries[0]["num"], "1")
             self.assertEqual(entries[0]["title"], "中文标题示例")
             self.assertEqual(entries[0]["url"], "https://example.com/source")
-
-    def test_markdown_to_html_splits_chinese_bibliography(self):
-        report = "\n\n".join(
-            [
-                "# 研究报告：测试主题",
-                "## 执行摘要\n\n中文摘要内容。[1]",
-                "## 引言\n\n中文引言内容。[1]",
-                "## 参考文献\n\n[1] 示例来源 - https://example.com/source",
-            ]
-        )
-
-        content_html, bibliography_html = convert_markdown_to_html(report)
-
-        self.assertIn("执行摘要", content_html)
-        self.assertIn('class="executive-summary"', content_html)
-        self.assertIn('class="bib-entry"', bibliography_html)
-        self.assertIn("https://example.com/source", bibliography_html)
-        self.assertNotIn("参考文献", content_html)
-
 
 if __name__ == "__main__":
     unittest.main()

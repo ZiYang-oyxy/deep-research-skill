@@ -7,8 +7,6 @@
 默认交付链路为 Markdown-first：
 
 - 主交付物是 `report.md`
-- 默认不生成 HTML / PDF
-- HTML / PDF 相关模板、脚本和说明仍保留在仓库中，作为非默认扩展能力
 
 该 skill 假设运行环境具备以下基础能力：
 
@@ -34,13 +32,6 @@
 - `sources.json`
 - `run_state.json`
 - `continuation_state.json`，仅在需要跨 pass 续写时保留
-
-非默认扩展产物：
-
-- HTML
-- PDF
-
----
 
 ## Orchestration Helper
 

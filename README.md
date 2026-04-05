@@ -93,8 +93,6 @@ Contract artifacts for non-silent-degradation checks:
 - `phase_critique.json` - required in `deep` and `ultradeep`
 - `phase_refine.json` - required in `deep` and `ultradeep`
 
-HTML and PDF assets remain in the repository as optional non-default resources, but the main skill workflow does not generate them.
-
 Optional helper automation:
 
 - The helper defaults to `--skeleton-only`; this initializes research artifacts and the report skeleton but does not imply that body prose has been written
@@ -165,19 +163,14 @@ deep-research/
 │   ├── continuation.md
 │   ├── runtime-codex.md
 │   ├── runtime-opencode.md
-│   ├── html-generation.md
-│   └── weasyprint_guidelines.md
 ├── templates/
-│   ├── report_template.md
-│   └── mckinsey_report_template.html
+│   └── report_template.md
 ├── scripts/
 │   ├── report_contract.py
 │   ├── validate_report.py
 │   ├── verify_citations.py
 │   ├── source_evaluator.py
 │   ├── citation_manager.py
-│   ├── md_to_html.py
-│   ├── verify_html.py
 │   └── research_engine.py
 └── tests/
     └── fixtures/
@@ -186,7 +179,6 @@ deep-research/
 Notes:
 
 - `SKILL.md` is the entry point and defines the default workflow.
-- `reference/html-generation.md` and `reference/weasyprint_guidelines.md` are retained as optional assets, not default deliverables.
 - `scripts/report_contract.py` is the shared source of truth for required section headings and validator thresholds.
 - `scripts/research_engine.py` creates the report directory in the current working directory, maintains section checkpoints inside `run_state.json`, records `metadata.next_action`, and can resume from either `run_state.json` or `continuation_state.json`.
 - The helper's default outcome is orchestration-state initialization, not a fully drafted report body.

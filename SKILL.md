@@ -1,6 +1,14 @@
 ---
 name: deep-research
-description: Conducts enterprise-grade research with multi-source synthesis, citation tracking, contract gating, and resumable markdown-first report assembly. The local helper defaults to skeleton-only initialization: it mainly creates phase artifacts, state files, and a report skeleton rather than automatically finishing retrieval, writing, and artifact backfill. Triggers on "deep research", "comprehensive analysis", "research report", "compare X vs Y", "analyze trends", or "state of the art". Not for simple lookups, debugging, or questions answerable with 1-2 searches.
+description: >
+  Conducts enterprise-grade research with multi-source synthesis, citation
+  tracking, contract gating, and resumable markdown-first report assembly. The
+  local helper defaults to skeleton-only initialization: it mainly creates
+  phase artifacts, state files, and a report skeleton rather than automatically
+  finishing retrieval, writing, and artifact backfill. Triggers on "deep
+  research", "comprehensive analysis", "research report", "compare X vs Y",
+  "analyze trends", or "state of the art". Not for simple lookups, debugging,
+  or questions answerable with 1-2 searches.
 ---
 
 # Deep Research
@@ -141,7 +149,6 @@ Mode Selection
 
 **Optional helpers and extensions:**
 - `source_evaluator.py` can be used when the runtime wants explicit source scoring
-- HTML / PDF assets remain available as non-default packaging extensions
 
 ---
 
