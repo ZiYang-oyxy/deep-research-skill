@@ -21,6 +21,9 @@ from report_contract import (  # noqa: E402
     EXECUTIVE_SUMMARY_MAX_WORDS,
     EXECUTIVE_SUMMARY_MIN_WORDS,
     REPORT_SECTION_TITLES,
+    get_default_section_heading,
+    get_default_section_title,
+    resolve_section_id,
 )
 
 
@@ -101,10 +104,10 @@ def render_section(section_payload: dict, report_content: str, base_url: str) ->
     heading = section_payload["heading"]
     chunks = []
 
-    if section_id.startswith("finding_") and "## Main Analysis" not in report_content:
-        chunks.append("## Main Analysis\n")
+    if section_id.startswith("finding_") and "## Main Analysis" not in report_content and "## 主要分析" not in report_content:
+        chunks.append("## 主要分析\n")
         finding_number = section_id.split("_", 1)[1]
-        heading = f"### Finding {finding_number}: Test finding {finding_number}"
+        heading = f"### 发现 {finding_number}：测试发现 {finding_number}"
 
     if section_id == "executive_summary":
         body = word_block("summary", 100) + " [1]"
@@ -433,6 +436,9 @@ class ResearchEngineStateTests(unittest.TestCase):
             )
             self.assertIn("continuation_state.json", next_action["resume_command"])
             self.assertIn("report sections are still incomplete", next_action["blocking_reason"].lower())
+            self.assertEqual(run_state["metadata"]["write_mode"], "skeleton_only")
+            self.assertIn("report body text is still incomplete", initial.stdout)
+            self.assertIn("Current run only initialized research artifacts", initial.stdout)
 
     def test_continuation_and_section_checkpoint_flow(self):
         with tempfile.TemporaryDirectory() as temp_dir, local_http_server() as base_url:
@@ -636,7 +642,7 @@ class ResearchEngineStateTests(unittest.TestCase):
 
                     time.sleep(0.3)
 
-                stdout, stderr = process.communicate(timeout=10)
+                stdout, stderr = process.communicate(timeout=20)
             finally:
                 if process.poll() is None:
                     process.terminate()
@@ -653,6 +659,29 @@ class ResearchEngineStateTests(unittest.TestCase):
                 {item["status"] for item in run_state["section_checkpoints"]},
                 {"completed"},
             )
+
+    def test_attempt_autowrite_flag_is_recorded_and_reported(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workdir = Path(temp_dir)
+
+            result = run_engine(
+                workdir,
+                "--query",
+                "autowrite mode regression test",
+                "--mode",
+                "standard",
+                "--runtime",
+                "codex",
+                "--attempt-autowrite",
+            )
+
+            report_dir = next(workdir.glob("research_*"))
+            run_state = read_json(report_dir / "run_state.json")
+
+            self.assertEqual(run_state["metadata"]["write_mode"], "attempt_autowrite")
+            self.assertIn("# Write Mode: attempt_autowrite", result.stdout)
+            self.assertIn("Automatic writing mode requested", result.stdout)
+            self.assertIn("report body text is still incomplete", result.stdout)
 
     def test_validation_failure_blocks_completed_status(self):
         with tempfile.TemporaryDirectory() as temp_dir, local_http_server() as base_url:
@@ -788,6 +817,114 @@ class ResearchEngineStateTests(unittest.TestCase):
         ))
         self.assertEqual(EXECUTIVE_SUMMARY_MIN_WORDS, 50)
         self.assertEqual(EXECUTIVE_SUMMARY_MAX_WORDS, 400)
+
+    def test_default_section_plan_uses_chinese_visible_headings(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workdir = Path(temp_dir)
+            initial = run_engine(
+                workdir,
+                "--query",
+                "default chinese headings regression test",
+                "--mode",
+                "standard",
+                "--runtime",
+                "codex",
+            )
+            self.assertIn("ORCHESTRATION STATE UPDATED", initial.stdout)
+
+            report_dir = next(workdir.glob("research_*"))
+            run_state = read_json(report_dir / "run_state.json")
+            checkpoints = {
+                item["section_id"]: item
+                for item in run_state["section_checkpoints"]
+            }
+
+            self.assertEqual(
+                checkpoints["executive_summary"]["heading"],
+                get_default_section_heading("executive_summary"),
+            )
+            self.assertEqual(
+                checkpoints["introduction"]["heading"],
+                get_default_section_heading("introduction"),
+            )
+            self.assertEqual(
+                checkpoints["bibliography"]["heading"],
+                get_default_section_heading("bibliography"),
+            )
+            self.assertEqual(
+                checkpoints["executive_summary"]["title"],
+                get_default_section_title("executive_summary"),
+            )
+
+    def test_resume_recognizes_chinese_sections_as_completed(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workdir = Path(temp_dir)
+            run_engine(
+                workdir,
+                "--query",
+                "chinese section completion regression test",
+                "--mode",
+                "standard",
+                "--runtime",
+                "codex",
+            )
+
+            report_dir = next(workdir.glob("research_*"))
+            report_path = report_dir / "report.md"
+            report_path.write_text(
+                "\n\n".join(
+                    [
+                        "## 执行摘要\n\n"
+                        + "这是一段足够长的中文摘要内容，用于验证默认中文标题与摘要识别逻辑，并覆盖主要结论、适用边界和关键建议。"
+                        * 2
+                        + "[1]\n第二句补充主要结论和适用边界，并说明为何需要保留中文默认输出。[2]",
+                        "## 引言\n\n"
+                        + "这里用中文说明研究范围、方法与关键假设，确保长度足够让状态机认定该章节已完成，同时保留必要引用。"
+                        * 3
+                        + "[1][2]",
+                        "## 主要分析\n\n### 发现 1：测试发现 1\n\n"
+                        + "这是一段用于验证中文发现章节完成判定的正文内容。" * 20
+                        + "[1][2]",
+                        "## 综合与洞察\n\n" + "综合结论内容。" * 30 + "[2]",
+                        "## 局限性与注意事项\n\n" + "局限性说明。" * 20 + "[2]",
+                        "## 建议\n\n" + "建议内容。" * 20 + "[2]",
+                        "## 参考文献\n\n[1] Example source - https://example.com/source-1\n[2] Example source - https://example.com/source-2",
+                        "## 附录：研究方法\n\n" + "研究方法说明。" * 20,
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            run_engine(
+                workdir,
+                "--resume",
+                str(report_dir / "run_state.json"),
+                "--runtime",
+                "codex",
+            )
+
+            run_state = read_json(report_dir / "run_state.json")
+            completed_ids = set(run_state["metadata"]["completed_section_ids"])
+            self.assertEqual(run_state["status"], "in_progress")
+            self.assertTrue(
+                {
+                    "executive_summary",
+                    "introduction",
+                    "finding_1",
+                    "synthesis_insights",
+                    "limitations_caveats",
+                    "recommendations",
+                    "bibliography",
+                    "methodology_appendix",
+                }.issubset(completed_ids)
+            )
+
+    def test_report_contract_resolves_chinese_section_aliases(self):
+        self.assertEqual(resolve_section_id("执行摘要"), "executive_summary")
+        self.assertEqual(resolve_section_id("## 主要分析"), "main_analysis")
+        self.assertEqual(resolve_section_id("综合洞察"), "synthesis_insights")
+        self.assertEqual(resolve_section_id("附录：研究方法"), "methodology_appendix")
 
 
 if __name__ == "__main__":

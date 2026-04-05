@@ -38,10 +38,13 @@ python scripts/research_engine.py --resume ./research_[YYYYMMDD]_[topic_slug]/ru
 
 ```bash
 python scripts/research_engine.py --query "topic" --mode deep --runtime codex
+python scripts/research_engine.py --query "topic" --mode deep --runtime codex --skeleton-only
+python scripts/research_engine.py --query "topic" --mode deep --runtime codex --attempt-autowrite
 ```
 
-2. Persist the report to `report.md`, sources to `sources.json`, and checkpoints to `run_state.json`.
-3. If another pass is required, write `continuation_state.json` and re-enter through the helper or native continuation.
+2. Treat the helper as skeleton-first by default: it mainly prepares `report.md`, `sources.json`, `run_state.json`, and the phase artifacts.
+3. Actual retrieval, analysis, and narrative drafting normally still happen in the active agent session or delegated subagents.
+4. If another pass is required, write `continuation_state.json` and re-enter through the helper or native continuation.
 
 ## Failure Handling
 

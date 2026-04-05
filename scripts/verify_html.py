@@ -9,6 +9,8 @@ import re
 from pathlib import Path
 from typing import List, Tuple
 
+from report_contract import get_default_section_title, resolve_section_id
+
 
 class HTMLVerifier:
     """Verify HTML research reports"""
@@ -58,9 +60,11 @@ class HTMLVerifier:
         """Verify all markdown sections are present in HTML"""
         # Extract section headings from markdown
         md_sections = re.findall(r'^## (.+)$', md, re.MULTILINE)
+        md_section_ids = [resolve_section_id(item) or item for item in md_sections]
 
         # Extract sections from HTML
         html_sections = re.findall(r'<h2 class="section-title">(.+?)</h2>', html)
+        html_section_ids = [resolve_section_id(item) or item for item in html_sections]
 
         # Check if we have placeholder sections like <div class="section">#</div>
         placeholder_sections = re.findall(r'<div class="section">#</div>', html)
@@ -75,12 +79,16 @@ class HTMLVerifier:
             self.errors.append(
                 f"Section count mismatch: MD has {len(md_sections)} sections, HTML has only {len(html_sections)} + bibliography"
             )
-            missing = set(md_sections) - set(html_sections)
+            missing = set(md_section_ids) - set(html_section_ids)
             if missing:
                 self.errors.append(f"Missing sections in HTML: {missing}")
 
         # Verify Executive Summary is present
-        if "Executive Summary" in md and "Executive Summary" not in html:
+        if (
+            ("Executive Summary" in md or get_default_section_title("executive_summary") in md)
+            and "Executive Summary" not in html
+            and get_default_section_title("executive_summary") not in html
+        ):
             self.errors.append("Executive Summary missing from HTML")
 
     def _check_no_placeholders(self, html: str):
@@ -163,7 +171,7 @@ class HTMLVerifier:
 
     def _check_bibliography(self, html: str, md: str):
         """Verify bibliography is present and formatted"""
-        if '## Bibliography' in md:
+        if "## Bibliography" in md or f"## {get_default_section_title('bibliography')}" in md:
             if 'class="bibliography"' not in html:
                 self.errors.append("Bibliography section missing from HTML")
             elif 'class="bib-entry"' not in html:

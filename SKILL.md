@@ -1,6 +1,6 @@
 ---
 name: deep-research
-description: Conducts enterprise-grade research with multi-source synthesis, citation tracking, contract gating, and resumable markdown-first report assembly. Triggers on "deep research", "comprehensive analysis", "research report", "compare X vs Y", "analyze trends", or "state of the art". Not for simple lookups, debugging, or questions answerable with 1-2 searches.
+description: Conducts enterprise-grade research with multi-source synthesis, citation tracking, contract gating, and resumable markdown-first report assembly. The local helper defaults to skeleton-only initialization: it mainly creates phase artifacts, state files, and a report skeleton rather than automatically finishing retrieval, writing, and artifact backfill. Triggers on "deep research", "comprehensive analysis", "research report", "compare X vs Y", "analyze trends", or "state of the art". Not for simple lookups, debugging, or questions answerable with 1-2 searches.
 ---
 
 # Deep Research
@@ -8,6 +8,8 @@ description: Conducts enterprise-grade research with multi-source synthesis, cit
 ## Core Purpose
 
 Deliver citation-backed, verified research reports through a structured pipeline with durable evidence tracking, progressive context management, and resumable markdown-first packaging.
+
+**Default report language:** Final reports should use Chinese section headings and Chinese narrative by default. Existing English headings remain valid as compatible input for validation and resume.
 
 **Autonomy Principle:** Operate independently. Infer reasonable assumptions from context. Pause only for critical blockers, contradictory requirements, or missing access.
 
@@ -65,6 +67,8 @@ Mode Selection
 
 **Scripts:**
 - `python scripts/research_engine.py --query [topic] --mode [mode] --runtime [codex|opencode|generic]`
+- `python scripts/research_engine.py --query [topic] --mode [mode] --runtime [codex|opencode|generic] --skeleton-only`
+- `python scripts/research_engine.py --query [topic] --mode [mode] --runtime [codex|opencode|generic] --attempt-autowrite`
 - `python scripts/research_engine.py --query [topic] --mode [mode] --runtime [codex|opencode|generic] --auto-continue`
 - `python scripts/research_engine.py --resume ./research_[YYYYMMDD]_[topic_slug]/run_state.json --runtime [codex|opencode|generic]`
 - `python scripts/research_engine.py --resume ./research_[YYYYMMDD]_[topic_slug]/continuation_state.json --runtime [codex|opencode|generic]`
@@ -99,6 +103,8 @@ Mode Selection
 ---
 
 ## Output Contract
+
+`research_engine.py` should be treated as an orchestration helper, not a fully automatic report writer. In most runtimes it mainly generates phase artifacts, status files, and the report skeleton. Actual retrieval, analysis, prose drafting, and artifact backfill usually still need to be performed by the current agent or delegated subagents.
 
 **Required sections:**
 - Executive Summary (50-400 words)

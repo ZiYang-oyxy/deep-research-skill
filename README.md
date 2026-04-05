@@ -2,6 +2,10 @@
 
 Enterprise-grade research skill for agent environments that can browse current sources, open source pages, edit files, and run local scripts. It produces citation-backed research reports with durable citation tracking, resumable markdown-first report assembly, automated validation, and runtime-aware orchestration.
 
+Important default behavior: `scripts/research_engine.py` is primarily an orchestration helper. In most runtimes it generates phase artifacts, state files, and a report skeleton; it does not automatically complete retrieval, analysis, narrative drafting, or artifact backfill unless the active agent runtime or delegated subagents do that work.
+
+Default report language: final `report.md` output should use Chinese section headings and Chinese narrative by default. Existing English headings remain supported for validation and resume flows.
+
 ## Installation
 
 ```bash
@@ -93,6 +97,8 @@ HTML and PDF assets remain in the repository as optional non-default resources, 
 
 Optional helper automation:
 
+- The helper defaults to `--skeleton-only`; this initializes research artifacts and the report skeleton but does not imply that body prose has been written
+- `--attempt-autowrite` makes the writing intent explicit, but in most runtimes the helper still depends on the active agent or delegated subagents to perform retrieval and drafting
 - Add `--auto-continue` to keep the helper running while another agent or manual editor updates `report.md` / `phase_*.json`
 - The helper watches the files listed in `metadata.next_action.required_files` and consumes the recorded `resume_command` automatically when changes land
 - Tune with `--auto-continue-timeout`, `--auto-continue-poll`, and `--auto-continue-max-resumes`
@@ -131,6 +137,8 @@ If the runtime lacks native delegation or continuation, fall back to the local h
 
 ```bash
 python scripts/research_engine.py --query "topic" --mode deep --runtime codex
+python scripts/research_engine.py --query "topic" --mode deep --runtime codex --skeleton-only
+python scripts/research_engine.py --query "topic" --mode deep --runtime codex --attempt-autowrite
 python scripts/research_engine.py --resume ./research_[YYYYMMDD]_[topic_slug]/run_state.json --runtime codex
 python scripts/research_engine.py --resume ./research_[YYYYMMDD]_[topic_slug]/continuation_state.json --runtime codex
 ```
@@ -181,6 +189,7 @@ Notes:
 - `reference/html-generation.md` and `reference/weasyprint_guidelines.md` are retained as optional assets, not default deliverables.
 - `scripts/report_contract.py` is the shared source of truth for required section headings and validator thresholds.
 - `scripts/research_engine.py` creates the report directory in the current working directory, maintains section checkpoints inside `run_state.json`, records `metadata.next_action`, and can resume from either `run_state.json` or `continuation_state.json`.
+- The helper's default outcome is orchestration-state initialization, not a fully drafted report body.
 
 ## Validation
 
@@ -193,6 +202,7 @@ Example smoke test for the orchestration helper:
 
 ```bash
 python scripts/research_engine.py --query "state of quantum computing 2026" --mode deep --runtime codex
+python scripts/research_engine.py --query "state of quantum computing 2026" --mode deep --runtime codex --attempt-autowrite
 python scripts/research_engine.py --query "state of quantum computing 2026" --mode deep --runtime codex --auto-continue
 ```
 

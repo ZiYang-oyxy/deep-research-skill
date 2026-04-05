@@ -10,6 +10,8 @@ from datetime import datetime
 from urllib.parse import urlparse
 import hashlib
 
+from report_contract import get_default_section_heading
+
 
 @dataclass
 class Citation:
@@ -101,14 +103,14 @@ class CitationManager:
     def generate_bibliography(self, style: str = "markdown") -> str:
         """Generate full bibliography"""
         if style == "markdown":
-            lines = ["## Bibliography\n"]
+            lines = [get_default_section_heading("bibliography") + "\n"]
             for i, citation_id in enumerate(self.citation_order, 1):
                 citation = self.citations[citation_id]
                 lines.append(citation.to_markdown(i))
             return "\n".join(lines)
 
         elif style == "apa":
-            lines = ["## Bibliography\n"]
+            lines = [get_default_section_heading("bibliography") + "\n"]
             for i, citation_id in enumerate(self.citation_order, 1):
                 citation = self.citations[citation_id]
                 lines.append(citation.to_apa(i))

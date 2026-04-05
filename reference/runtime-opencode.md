@@ -38,11 +38,14 @@ python scripts/research_engine.py --resume ./research_[YYYYMMDD]_[topic_slug]/ru
 
 ```bash
 python scripts/research_engine.py --query "topic" --mode deep --runtime opencode
+python scripts/research_engine.py --query "topic" --mode deep --runtime opencode --skeleton-only
+python scripts/research_engine.py --query "topic" --mode deep --runtime opencode --attempt-autowrite
 ```
 
-2. Write the report incrementally to `report.md` and maintain `sources.json`.
-3. Let `run_state.json` serve as the durable checkpoint between passes.
-4. If the report needs another pass, create `continuation_state.json` and resume through the helper if native continuation is unavailable.
+2. Treat the helper as skeleton-first by default: it mainly prepares `report.md`, `sources.json`, `run_state.json`, and the phase artifacts.
+3. Write the report incrementally in the active agent session or delegated subagents and keep `sources.json` current.
+4. Let `run_state.json` serve as the durable checkpoint between passes.
+5. If the report needs another pass, create `continuation_state.json` and resume through the helper if native continuation is unavailable.
 
 ## Failure Handling
 

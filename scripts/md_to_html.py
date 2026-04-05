@@ -8,6 +8,11 @@ import re
 from typing import Tuple
 from pathlib import Path
 
+from report_contract import (
+    get_default_section_title,
+    resolve_section_id,
+)
+
 
 def convert_markdown_to_html(markdown_text: str) -> Tuple[str, str]:
     """
@@ -20,9 +25,17 @@ def convert_markdown_to_html(markdown_text: str) -> Tuple[str, str]:
         Tuple of (content_html, bibliography_html)
     """
     # Split content and bibliography
-    parts = markdown_text.split('## Bibliography')
-    content_md = parts[0]
-    bibliography_md = parts[1] if len(parts) > 1 else ""
+    bibliography_md = ""
+    content_md = markdown_text
+    bibliography_match = re.search(r"^\s*##\s+(.+)$", markdown_text, re.MULTILINE)
+    for match in re.finditer(r"^\s*##\s+(.+)$", markdown_text, re.MULTILINE):
+        if resolve_section_id(match.group(1).strip()) == "bibliography":
+            bibliography_match = match
+            break
+
+    if bibliography_match:
+        content_md = markdown_text[:bibliography_match.start()]
+        bibliography_md = markdown_text[bibliography_match.end():]
 
     # Convert content (everything except bibliography)
     content_html = _convert_content_section(content_md)
@@ -101,8 +114,12 @@ def _convert_content_section(markdown: str) -> str:
 
     # Wrap executive summary if present
     html = html.replace(
+        f'<h2 class="section-title">{get_default_section_title("executive_summary")}</h2>',
+        f'<div class="executive-summary"><h2 class="section-title">{get_default_section_title("executive_summary")}</h2>'
+    )
+    html = html.replace(
         '<h2 class="section-title">Executive Summary</h2>',
-        '<div class="executive-summary"><h2 class="section-title">Executive Summary</h2>'
+        f'<div class="executive-summary"><h2 class="section-title">{get_default_section_title("executive_summary")}</h2>'
     )
     if '<div class="executive-summary">' in html:
         # Close executive summary at the next section
@@ -121,6 +138,7 @@ def _convert_bibliography_section(markdown: str) -> str:
         return ""
 
     html = markdown
+    html = re.sub(r"^\s*##\s+(.+)$", "", html, count=1, flags=re.MULTILINE).strip()
 
     # Convert each [N] citation to a proper bibliography entry
     # Look for patterns like [1] Title - URL

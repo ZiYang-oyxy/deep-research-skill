@@ -1,4 +1,4 @@
-# Research Report: [Topic]
+# 研究报告：[主题]
 
 <!-- =============================================================================
 PROGRESSIVE FILE ASSEMBLY STRATEGY (2025 - Unlimited Length):
@@ -15,10 +15,10 @@ For reports >20,000 words: Continue across multiple passes using continuation st
 Keep `run_state.json` current throughout the run; create `continuation_state.json` only when another pass is required
 
 GENERATION WORKFLOW:
-1. Generate Executive Summary → write to file
+1. 生成执行摘要 → 写入文件
    (As long as needed for comprehensive summary)
 
-2. Generate Introduction → append to file
+2. 生成引言 → 追加到文件
    (As long as needed to establish context)
 
 3. Generate Finding 1 → append to file
@@ -29,13 +29,13 @@ GENERATION WORKFLOW:
 
 5. Continue for ALL findings (no limit on number OR length per finding!)
 
-6. Generate Synthesis → append to file
+6. 生成综合与洞察 → 追加到文件
    (As long as needed for deep synthesis)
 
-7. Generate Limitations → append to file
-8. Generate Recommendations → append to file
-9. Generate Bibliography (ALL citations) → append to file
-10. Generate Methodology → append to file
+7. 生成局限性与注意事项 → 追加到文件
+8. 生成建议 → 追加到文件
+9. 生成参考文献（包含全部引用）→ 追加到文件
+10. 生成研究方法附录 → 追加到文件
 
 SIZING PRINCIPLE:
 - Each section should be as long as IT NEEDS TO BE
@@ -48,7 +48,7 @@ SIZING PRINCIPLE:
 CITATION TRACKING (CRITICAL):
 - Maintain running list in working memory: citations_used = [1, 2, 3, ...]
 - After each section: Add new citations to list
-- In Bibliography: Generate entry for EVERY citation in final list
+- 在参考文献中：为最终正文中出现的每个引用生成完整条目
 - NO gaps, NO ranges, NO placeholders
 
 ============================================================================= -->
@@ -79,28 +79,28 @@ CITATION TRACKING (CRITICAL):
 <!-- Progressive assembly handles unlimited length - you handle quality per section -->
 <!-- If another pass is required, auto-continue through the runtime adapter or local helper -->
 
-## Executive Summary
+## 执行摘要
 
-[Write 3-5 bullet points, 50-400 words total]
-- **Key Finding 1:** [Major discovery with specific data/metrics]
-- **Key Finding 2:** [Important insight with evidence]
-- **Key Finding 3:** [Critical conclusion with implications]
-- [Additional findings as needed]
+[写 3-5 个要点，总长度 50-400 词或对应中文篇幅]
+- **关键发现 1：** [包含具体数据/指标的主要发现]
+- **关键发现 2：** [有证据支撑的重要洞察]
+- **关键发现 3：** [带有影响判断的关键结论]
+- [按需补充]
 
-**Primary Recommendation:** [One clear sentence stating the main recommendation]
+**主要建议：** [一句话明确写出首要建议]
 
-**Confidence Level:** [High/Medium/Low with brief justification]
+**置信度：** [高/中/低，并简要说明理由]
 
 ---
 
-## Introduction
+## 引言
 
-### Research Question
-[State the original question clearly and completely]
+### 研究问题
+[清晰、完整地陈述原始问题]
 
 [Add 1-2 sentences providing context for why this question matters]
 
-### Scope & Methodology
+### 范围与方法
 [2-3 paragraphs explaining:]
 - What specific aspects were investigated
 - What was included vs excluded from scope
@@ -108,7 +108,7 @@ CITATION TRACKING (CRITICAL):
 - How many sources were consulted
 - Time period covered
 
-### Key Assumptions
+### 关键假设
 [List 3-5 important assumptions made during research]
 - Assumption 1: [Description and why it matters]
 - Assumption 2: [Description and why it matters]
@@ -116,7 +116,7 @@ CITATION TRACKING (CRITICAL):
 
 ---
 
-## Main Analysis
+## 主要分析
 
 <!-- CRITICAL: Write 4-8 detailed findings, each 600-2,000 words -->
 <!-- Each finding should have multiple paragraphs with evidence -->
@@ -125,7 +125,7 @@ CITATION TRACKING (CRITICAL):
 <!-- "mortality reduced 23%" not "significantly improved" -->
 <!-- "5 trials (n=1,847)" not "several studies" -->
 
-### Finding 1: [Descriptive Title That Captures the Key Point]
+### 发现 1：[能够概括关键结论的描述性标题]
 
 [Opening paragraph: State the finding clearly and why it matters]
 
@@ -137,41 +137,41 @@ CITATION TRACKING (CRITICAL):
 - Address nuances or exceptions
 ]
 
-**Key Evidence:**
+**关键证据：**
 - Data point 1 from Source A [1]
 - Data point 2 from Source B [2]
 - Conflicting view from Source C [3] and how it was resolved
 
-**Implications:**
+**影响：**
 [1-2 paragraphs on what this finding means for the user's decision/understanding]
 
-**Sources:** [1], [2], [3], [4]
+**来源：** [1], [2], [3], [4]
 
 ---
 
-### Finding 2: [Descriptive Title]
+### 发现 2：[描述性标题]
 
 [Follow same detailed structure as Finding 1]
 [Minimum 300 words per finding]
 [Include multiple paragraphs with evidence]
 
-**Sources:** [5], [6], [7], [8]
+**来源：** [5], [6], [7], [8]
 
 ---
 
-### Finding 3: [Descriptive Title]
+### 发现 3：[描述性标题]
 
 [Continue with same detail level]
 
-**Sources:** [9], [10], [11]
+**来源：** [9], [10], [11]
 
 ---
 
-### Finding 4: [Descriptive Title]
+### 发现 4：[描述性标题]
 
 [And so on... Include 4-8 major findings minimum]
 
-**Sources:** [12], [13], [14]
+**来源：** [12], [13], [14]
 
 ---
 
@@ -179,12 +179,12 @@ CITATION TRACKING (CRITICAL):
 
 ---
 
-## Synthesis & Insights
+## 综合与洞察
 
 <!-- This section should be 500-1000 words -->
 <!-- Go beyond just summarizing - generate NEW insights -->
 
-### Patterns Identified
+### 识别出的模式
 
 [2-3 paragraphs identifying key patterns across findings]
 
@@ -194,7 +194,7 @@ CITATION TRACKING (CRITICAL):
 **Pattern 2: [Name]**
 [Continue...]
 
-### Novel Insights
+### 新洞察
 
 [2-3 paragraphs of insights that go BEYOND what sources explicitly stated]
 
@@ -205,7 +205,7 @@ CITATION TRACKING (CRITICAL):
 **Insight 2: [Name]**
 [Continue...]
 
-### Implications
+### 含义
 
 [2-3 paragraphs on what all this means]
 
@@ -220,11 +220,11 @@ CITATION TRACKING (CRITICAL):
 
 ---
 
-## Limitations & Caveats
+## 局限性与注意事项
 
 <!-- Be honest and comprehensive about what's uncertain -->
 
-### Counterevidence Register
+### 反证登记
 
 <!-- Document findings that contradict or challenge main conclusions -->
 
@@ -238,7 +238,7 @@ CITATION TRACKING (CRITICAL):
 
 **Contradictory Finding 2:** [Continue...]
 
-### Known Gaps
+### 已知空白
 
 [2-3 paragraphs explaining:]
 - What information was not available
@@ -252,7 +252,7 @@ CITATION TRACKING (CRITICAL):
 
 **Gap 2:** [Continue...]
 
-### Assumptions
+### 假设复核
 
 [Revisit key assumptions from intro, now with more detail on their validity]
 
@@ -261,7 +261,7 @@ CITATION TRACKING (CRITICAL):
 - Evidence challenging it: [...]
 - Overall validity: [...]
 
-### Areas of Uncertainty
+### 不确定性区域
 
 [2-3 paragraphs on:]
 - Where sources disagree
@@ -276,11 +276,11 @@ CITATION TRACKING (CRITICAL):
 
 ---
 
-## Recommendations
+## 建议
 
 <!-- Make this actionable and specific -->
 
-### Immediate Actions
+### 立即行动
 
 [3-5 specific actions the user should take NOW]
 
@@ -292,14 +292,14 @@ CITATION TRACKING (CRITICAL):
 
 2. **[Continue with similar detail...]**
 
-### Next Steps
+### 后续步骤
 
 [3-5 actions for the near-term future (1-3 months)]
 
 1. **[Step Title]**
    - [Similar detailed structure]
 
-### Further Research Needs
+### 进一步研究需求
 
 [3-5 areas where additional research would be valuable]
 
@@ -310,7 +310,7 @@ CITATION TRACKING (CRITICAL):
 
 ---
 
-## Bibliography
+## 参考文献
 
 <!-- ============================================================================ -->
 <!-- CRITICAL: Generate COMPLETE bibliography with ALL sources cited in report   -->
@@ -331,9 +331,9 @@ CITATION TRACKING (CRITICAL):
 
 ---
 
-## Appendix: Methodology
+## 附录：研究方法
 
-### Research Process
+### 研究流程
 
 [2-3 paragraphs describing the research process in detail]
 
@@ -343,7 +343,7 @@ CITATION TRACKING (CRITICAL):
 - Phase 3 (RETRIEVE): [What was done]
 - [Continue for all phases executed]
 
-### Sources Consulted
+### 已参考来源
 
 **Total Sources:** [Number]
 
@@ -361,7 +361,7 @@ CITATION TRACKING (CRITICAL):
 **Temporal Coverage:**
 [Date range of sources, recency distribution]
 
-### Verification Approach
+### 验证方法
 
 [2-3 paragraphs explaining:]
 
@@ -381,7 +381,7 @@ CITATION TRACKING (CRITICAL):
 - Issues found and corrected
 - Final quality metrics
 
-### Claims-Evidence Table
+### 论点-证据对照表
 
 <!-- Explicit mapping of major claims to supporting sources -->
 
@@ -399,7 +399,7 @@ CITATION TRACKING (CRITICAL):
 
 ---
 
-## Report Metadata
+## 报告元数据
 
 **Research Mode:** [Quick/Standard/Deep/UltraDeep]
 **Total Sources:** [Number]

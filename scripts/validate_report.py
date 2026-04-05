@@ -16,7 +16,14 @@ from report_contract import (
     MIN_REPORT_WORDS,
     RECOMMENDED_MIN_SOURCES,
     REPORT_SECTION_SPECS,
+    SECTION_PATTERNS_BY_ID,
+    count_length_units,
+    summarize_length_metrics,
 )
+CJK_SUMMARY_MIN_CHARS = 80
+CJK_SUMMARY_MAX_CHARS = 1200
+CJK_SUMMARY_MIN_UNITS = 2
+CJK_SUMMARY_MAX_UNITS = 12
 
 
 class ReportValidator:
@@ -69,31 +76,76 @@ class ReportValidator:
 
     def _check_executive_summary(self) -> bool:
         """Check executive summary exists and stays within the shared contract."""
-        pattern = r'## Executive Summary(.*?)(?=##|\Z)'
-        match = re.search(pattern, self.content, re.DOTALL | re.IGNORECASE)
+        match = self._extract_top_level_section(
+            list(SECTION_PATTERNS_BY_ID["executive_summary"])
+        )
 
         if not match:
             self.errors.append("Missing 'Executive Summary' section")
             return False
 
-        summary = match.group(1).strip()
-        word_count = len(summary.split())
+        summary = match[1].strip()
+        metrics = self._summarize_length_metrics(summary)
 
-        if word_count > EXECUTIVE_SUMMARY_MAX_WORDS:
-            self.errors.append(
-                f"Executive summary too long: {word_count} words "
-                f"(should be ≤{EXECUTIVE_SUMMARY_MAX_WORDS})"
-            )
-            return False
+        if metrics["cjk_ratio"] >= 0.2:
+            char_count = metrics["visible_chars"]
+            unit_count = metrics["summary_units"]
+            if char_count > CJK_SUMMARY_MAX_CHARS or unit_count > CJK_SUMMARY_MAX_UNITS:
+                self.errors.append(
+                    "Executive summary too long for CJK/multilingual text: "
+                    f"{char_count} visible chars across {unit_count} summary units "
+                    f"(should be ≤{CJK_SUMMARY_MAX_CHARS} chars and ≤{CJK_SUMMARY_MAX_UNITS} units)"
+                )
+                return False
 
-        if word_count < EXECUTIVE_SUMMARY_MIN_WORDS:
-            self.errors.append(
-                f"Executive summary too short: {word_count} words "
-                f"(should be ≥{EXECUTIVE_SUMMARY_MIN_WORDS})"
-            )
-            return False
+            if char_count < CJK_SUMMARY_MIN_CHARS or unit_count < CJK_SUMMARY_MIN_UNITS:
+                self.errors.append(
+                    "Executive summary too short for CJK/multilingual text: "
+                    f"{char_count} visible chars across {unit_count} summary units "
+                    f"(should be ≥{CJK_SUMMARY_MIN_CHARS} chars and ≥{CJK_SUMMARY_MIN_UNITS} units)"
+                )
+                return False
+        else:
+            word_count = metrics["word_count"]
+            if word_count > EXECUTIVE_SUMMARY_MAX_WORDS:
+                self.errors.append(
+                    f"Executive summary too long: {word_count} words "
+                    f"(should be ≤{EXECUTIVE_SUMMARY_MAX_WORDS})"
+                )
+                return False
+
+            if word_count < EXECUTIVE_SUMMARY_MIN_WORDS:
+                self.errors.append(
+                    f"Executive summary too short: {word_count} words "
+                    f"(should be ≥{EXECUTIVE_SUMMARY_MIN_WORDS})"
+                )
+                return False
 
         return True
+
+    def _extract_top_level_section(self, heading_patterns: List[str]) -> Tuple[str, str] | None:
+        """Extract a top-level markdown section by trying multiple heading patterns."""
+        for pattern in heading_patterns:
+            match = re.search(pattern, self.content, re.MULTILINE | re.IGNORECASE)
+            if not match:
+                continue
+
+            next_match = re.search(
+                r"^\s*##\s+",
+                self.content[match.end():],
+                re.MULTILINE | re.IGNORECASE,
+            )
+            end = match.end() + next_match.start() if next_match else len(self.content)
+            block = self.content[match.start():end].strip()
+            lines = block.splitlines()
+            heading_line = lines[0].strip() if lines else ""
+            body = "\n".join(lines[1:]).strip() if len(lines) > 1 else ""
+            return heading_line, body
+        return None
+
+    def _summarize_length_metrics(self, text: str) -> Dict[str, float]:
+        """Compute length metrics that work for English, Chinese, and mixed summaries."""
+        return summarize_length_metrics(text)
 
     def _check_required_sections(self) -> bool:
         """Check all required sections are present."""
@@ -159,14 +211,13 @@ class ReportValidator:
 
     def _check_bibliography(self) -> bool:
         """Check bibliography exists, matches citations, and has no truncation placeholders"""
-        pattern = r'## Bibliography(.*?)(?=##|\Z)'
-        match = re.search(pattern, self.content, re.DOTALL | re.IGNORECASE)
+        match = self._extract_top_level_section(list(SECTION_PATTERNS_BY_ID["bibliography"]))
 
         if not match:
             self.errors.append("Missing 'Bibliography' section")
             return False
 
-        bib_section = match.group(1)
+        bib_section = match[1]
 
         # CRITICAL: Check for truncation placeholders (2025 CiteGuard enhancement)
         truncation_patterns = [
@@ -259,23 +310,24 @@ class ReportValidator:
 
     def _check_word_count(self) -> bool:
         """Check overall report length"""
-        word_count = len(self.content.split())
+        word_count = count_length_units(self.content)
 
         if word_count < MIN_REPORT_WORDS:
-            self.warnings.append(f"Report is very short: {word_count} words (consider expanding)")
+            self.warnings.append(
+                f"Report is very short: {word_count} length units (consider expanding)"
+            )
         # No upper limit warning - progressive assembly supports unlimited lengths
 
         return True
 
     def _check_source_count(self) -> bool:
         """Check minimum source count"""
-        pattern = r'## Bibliography(.*?)(?=##|\Z)'
-        match = re.search(pattern, self.content, re.DOTALL | re.IGNORECASE)
+        match = self._extract_top_level_section(list(SECTION_PATTERNS_BY_ID["bibliography"]))
 
         if not match:
             return True  # Already caught in bibliography check
 
-        bib_section = match.group(1)
+        bib_section = match[1]
         bib_entries = re.findall(r'^\[(\d+)\]', bib_section, re.MULTILINE)
 
         source_count = len(set(bib_entries))

@@ -27,6 +27,8 @@ import json
 import time
 from datetime import datetime
 
+from report_contract import SECTION_PATTERNS_BY_ID
+
 class CitationVerifier:
     """Verify citations in research report"""
 
@@ -61,8 +63,20 @@ class CitationVerifier:
 
     def extract_bibliography(self) -> List[Dict]:
         """Extract bibliography entries from report"""
-        pattern = r'## Bibliography(.*?)(?=##|\Z)'
-        match = re.search(pattern, self.content, re.DOTALL | re.IGNORECASE)
+        match = None
+        for heading_pattern in SECTION_PATTERNS_BY_ID["bibliography"]:
+            candidate = re.search(heading_pattern, self.content, re.MULTILINE | re.IGNORECASE)
+            if not candidate:
+                continue
+            next_match = re.search(
+                r"^\s*##\s+",
+                self.content[candidate.end():],
+                re.MULTILINE | re.IGNORECASE,
+            )
+            end = candidate.end() + next_match.start() if next_match else len(self.content)
+            match = re.match(r"(?s)(.*)", self.content[candidate.end():end])
+            if match:
+                break
 
         if not match:
             self.errors.append("No Bibliography section found")
@@ -91,7 +105,11 @@ class CitationVerifier:
 
                 # Try to parse: Author (Year). "Title". Venue. URL
                 year_match = re.search(r'\((\d{4})\)', rest)
-                title_match = re.search(r'"([^"]+)"', rest)
+                title_match = (
+                    re.search(r'"([^"]+)"', rest)
+                    or re.search(r"“([^”]+)”", rest)
+                    or re.search(r"《([^》]+)》", rest)
+                )
                 doi_match = re.search(r'doi\.org/(10\.\S+)', rest)
                 url_match = re.search(r'https?://[^\s\)]+', rest)
 

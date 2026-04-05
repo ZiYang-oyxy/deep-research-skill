@@ -20,8 +20,16 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from report_contract import (
-    REPORT_SECTION_TITLES,
+    REPORT_SECTION_SPECS,
     SECTION_PATTERNS_BY_ID,
+    count_length_units,
+    get_any_finding_pattern,
+    get_default_finding_heading,
+    get_default_section_heading,
+    get_default_section_title,
+    get_finding_pattern,
+    min_length_for_section,
+    resolve_section_id,
 )
 
 
@@ -57,6 +65,12 @@ class RuntimeAdapter(Enum):
     GENERIC = "generic"
     CODEX = "codex"
     OPENCODE = "opencode"
+
+
+class WriteMode(Enum):
+    """Report writing modes exposed by the helper CLI."""
+    SKELETON_ONLY = "skeleton_only"
+    ATTEMPT_AUTOWRITE = "attempt_autowrite"
 
 
 STATE_VERSION = "2.2.0"
@@ -319,9 +333,11 @@ class ResearchEngine:
         mode: ResearchMode = ResearchMode.STANDARD,
         runtime: RuntimeAdapter = RuntimeAdapter.GENERIC,
         pass_word_budget: Optional[int] = None,
+        write_mode: WriteMode = WriteMode.SKELETON_ONLY,
     ):
         self.mode = mode
         self.runtime = runtime
+        self.write_mode = write_mode
         self.state: Optional[ResearchState] = None
         self.output_root = Path.cwd()
         self.output_dir: Optional[Path] = None
@@ -572,16 +588,16 @@ class ResearchEngine:
         checkpoints = [
             self._make_checkpoint(
                 "executive_summary",
-                "Executive Summary",
+                get_default_section_title("executive_summary"),
                 "executive_summary",
-                "## Executive Summary",
+                get_default_section_heading("executive_summary"),
                 targets["executive_summary"],
             ),
             self._make_checkpoint(
                 "introduction",
-                "Introduction",
+                get_default_section_title("introduction"),
                 "introduction",
-                "## Introduction",
+                get_default_section_heading("introduction"),
                 targets["introduction"],
             ),
         ]
@@ -590,9 +606,9 @@ class ResearchEngine:
             checkpoints.append(
                 self._make_checkpoint(
                     f"finding_{index}",
-                    f"Finding {index}",
+                    f"发现 {index}",
                     "finding",
-                    f"### Finding {index}: [Title]",
+                    get_default_finding_heading(index),
                     targets["finding"],
                 )
             )
@@ -601,37 +617,37 @@ class ResearchEngine:
             [
                 self._make_checkpoint(
                     "synthesis_insights",
-                    "Synthesis & Insights",
+                    get_default_section_title("synthesis_insights"),
                     "synthesis",
-                    "## Synthesis & Insights",
+                    get_default_section_heading("synthesis_insights"),
                     targets["synthesis"],
                 ),
                 self._make_checkpoint(
                     "limitations_caveats",
-                    "Limitations & Caveats",
+                    get_default_section_title("limitations_caveats"),
                     "limitations",
-                    "## Limitations & Caveats",
+                    get_default_section_heading("limitations_caveats"),
                     targets["limitations"],
                 ),
                 self._make_checkpoint(
                     "recommendations",
-                    "Recommendations",
+                    get_default_section_title("recommendations"),
                     "recommendations",
-                    "## Recommendations",
+                    get_default_section_heading("recommendations"),
                     targets["recommendations"],
                 ),
                 self._make_checkpoint(
                     "bibliography",
-                    "Bibliography",
+                    get_default_section_title("bibliography"),
                     "bibliography",
-                    "## Bibliography",
+                    get_default_section_heading("bibliography"),
                     targets["bibliography"],
                 ),
                 self._make_checkpoint(
                     "methodology_appendix",
-                    "Appendix: Methodology",
+                    get_default_section_title("methodology_appendix"),
                     "methodology",
-                    "## Appendix: Methodology",
+                    get_default_section_heading("methodology_appendix"),
                     targets["methodology"],
                 ),
             ]
@@ -682,6 +698,7 @@ class ResearchEngine:
                 "version": STATE_VERSION,
                 "report_id": report_id,
                 "runtime": self.runtime.value,
+                "write_mode": self.write_mode.value,
                 "output_dir": str(output_dir),
                 "report_path": str(report_path),
                 "sources_path": str(sources_path),
@@ -760,6 +777,7 @@ class ResearchEngine:
         self.state.metadata.setdefault("version", STATE_VERSION)
         self.state.metadata.setdefault("report_id", self.output_dir.name)
         self.state.metadata["runtime"] = self.runtime.value
+        self.state.metadata.setdefault("write_mode", self.write_mode.value)
         self.state.metadata["output_dir"] = str(self.output_dir)
         self.state.metadata["report_path"] = str(report_path)
         self.state.metadata["sources_path"] = str(sources_path)
@@ -782,8 +800,42 @@ class ResearchEngine:
         self._initialize_phase_artifacts()
 
     def _count_words(self, text: str) -> int:
-        """Count words in a text block."""
-        return len(re.findall(r"\b\w+\b", text))
+        """Count cross-language length units in a text block."""
+        return count_length_units(text)
+
+    def _write_mode_summary(self) -> str:
+        """Return a concise description of the helper's writing behavior."""
+        if self.write_mode == WriteMode.ATTEMPT_AUTOWRITE:
+            return (
+                "Automatic writing mode requested. This helper still mainly initializes "
+                "phase artifacts, state files, and the report skeleton; actual retrieval, "
+                "analysis, and prose generation usually require the agent runtime or delegated subagents."
+            )
+        return (
+            "Skeleton-only mode. This run initializes phase artifacts, state files, "
+            "and the report skeleton only."
+        )
+
+    def _print_post_run_guidance(self):
+        """Print direct guidance about what the helper has and has not completed."""
+        if self.state is None:
+            return
+
+        print("Status note:")
+        print(f"  - {self._write_mode_summary()}")
+        if self.state.status == "completed":
+            print("  - Final body content is present and validation passed.")
+            return
+
+        print("  - Current run only initialized research artifacts; report body text has not been fully generated yet.")
+        next_action = self.state.metadata.get("next_action", {})
+        if next_action.get("kind") == "write_sections":
+            required_sections = next_action.get("required_section_ids", [])
+            if required_sections:
+                print("  - Remaining sections: " + ", ".join(required_sections))
+        resume_command = next_action.get("resume_command")
+        if resume_command:
+            print(f"  - Resume after edits: {resume_command}")
 
     def _load_sources_ledger(self) -> List[Dict[str, Any]]:
         """Read sources.json without crashing on malformed content."""
@@ -813,7 +865,7 @@ class ResearchEngine:
         """Parse bibliography entries from the report."""
         result = self._extract_top_level_section(
             report_content,
-            [r"^\s*##\s+Bibliography\b.*$"],
+            list(SECTION_PATTERNS_BY_ID["bibliography"]),
         )
         if not result:
             return []
@@ -864,11 +916,15 @@ class ResearchEngine:
     def _extract_claim_snippets(self, report_content: str) -> Dict[int, List[str]]:
         """Collect sentence-level snippets keyed by citation number."""
         body = report_content
-        bibliography_match = re.search(
-            r"^\s*##\s+Bibliography\b.*$",
-            report_content,
-            re.MULTILINE | re.IGNORECASE,
-        )
+        bibliography_match = None
+        for pattern in SECTION_PATTERNS_BY_ID["bibliography"]:
+            bibliography_match = re.search(
+                pattern,
+                report_content,
+                re.MULTILINE | re.IGNORECASE,
+            )
+            if bibliography_match:
+                break
         if bibliography_match:
             body = report_content[:bibliography_match.start()]
 
@@ -1088,7 +1144,17 @@ class ResearchEngine:
             )
         else:
             outline_sections = {str(item) for item in artifact.get("final_outline_sections", [])}
-            missing_sections = [title for title in REPORT_SECTION_TITLES if title not in outline_sections]
+            outline_section_ids = {
+                section_id
+                for item in outline_sections
+                for section_id in [resolve_section_id(item)]
+                if section_id is not None
+            }
+            missing_sections = [
+                str(spec["title"])
+                for spec in REPORT_SECTION_SPECS
+                if str(spec["id"]) not in outline_section_ids
+            ]
             if missing_sections:
                 issues.append(
                     "Outline refinement artifact is missing final_outline_sections entries: "
@@ -1621,11 +1687,10 @@ class ResearchEngine:
         finding_number: int,
     ) -> Optional[Tuple[str, str]]:
         """Extract one numbered finding section."""
-        pattern = rf"^\s*###\s+Finding\s+{finding_number}\b.*$"
         return self._extract_block(
             content,
-            pattern,
-            r"^\s*(?:###\s+Finding\s+\d+\b|##\s+)",
+            get_finding_pattern(finding_number),
+            r"^\s*(?:(?:###\s+(?:Finding|发现)\s+\d+\s*(?:[:：-]\s*.*)?)|##\s+)",
         )
 
     def _ensure_finding_checkpoints(self, finding_count: int):
@@ -1650,9 +1715,9 @@ class ResearchEngine:
                 continue
             checkpoint = self._make_checkpoint(
                 f"finding_{number}",
-                f"Finding {number}",
+                f"发现 {number}",
                 "finding",
-                f"### Finding {number}: [Title]",
+                get_default_finding_heading(number),
                 SECTION_TARGETS[self.mode]["finding"],
             )
             self.state.section_checkpoints.insert(synthesis_index, checkpoint)
@@ -1674,10 +1739,20 @@ class ResearchEngine:
             return bool(re.findall(r"^\[\d+\]", body, re.MULTILINE))
 
         min_words = SECTION_MIN_WORDS[checkpoint.section_type]
-        return self._count_words(body) >= min_words and len(full_block.strip()) > 0
+        return self._count_words(body) >= min_length_for_section(min_words, body) and len(full_block.strip()) > 0
 
     def _summarize_text(self, text: str, max_words: int = 24) -> str:
         """Create a short plain-text summary for handoff state."""
+        if not text.strip():
+            return ""
+
+        if re.search(r"[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]", text):
+            visible_text = re.sub(r"\s+", " ", text).strip()
+            summary = visible_text[: max_words * 4]
+            if len(visible_text) > len(summary):
+                summary += " ..."
+            return summary
+
         words = re.findall(r"\b\w[\w'-]*\b", text)
         if not words:
             return ""
@@ -1695,7 +1770,7 @@ class ResearchEngine:
         found_finding_numbers = [
             int(match.group(1))
             for match in re.finditer(
-                r"^\s*###\s+Finding\s+(\d+)\b.*$",
+                get_any_finding_pattern(),
                 report_content,
                 re.MULTILINE | re.IGNORECASE,
             )
@@ -1771,7 +1846,7 @@ class ResearchEngine:
                 checkpoint.completed_at = checkpoint.completed_at or datetime.now().isoformat()
                 if checkpoint.section_type == "finding":
                     title_match = re.match(
-                        r"^\s*###\s+Finding\s+\d+\s*:?\s*(.*)$",
+                        r"^\s*###\s+(?:Finding|发现)\s+\d+\s*(?:[:：-]\s*)?(.*)$",
                         heading_line,
                         re.IGNORECASE,
                     )
@@ -1806,7 +1881,7 @@ class ResearchEngine:
         """Extract bibliography entries from the report."""
         result = self._extract_top_level_section(
             report_content,
-            [r"^\s*##\s+Bibliography\b.*$"],
+            list(SECTION_PATTERNS_BY_ID["bibliography"]),
         )
         if not result:
             return []
@@ -2384,6 +2459,7 @@ Your task: Deliver the report through progressive section assembly
         print(f"# Mode: {self.mode.value}")
         print(f"# Runtime: {self.runtime.value}")
         print(f"# Runtime Adapter Reference: {self._get_runtime_reference()}")
+        print(f"# Write Mode: {self.write_mode.value}")
         print(f"# Pass Word Budget: {self.pass_word_budget}")
         print(f"{'#' * 80}\n")
 
@@ -2411,6 +2487,7 @@ Your task: Deliver the report through progressive section assembly
         print(f"Report path: {report_file}")
         print(f"Run state: {self._get_run_state_path()}")
         self._print_section_progress()
+        self._print_post_run_guidance()
         print(f"{'=' * 80}\n")
 
         return str(report_file)
@@ -2444,6 +2521,8 @@ def main():
         epilog="""
 Examples:
   python research_engine.py --query "state of quantum computing 2026" --mode deep --runtime codex
+  python research_engine.py --query "state of quantum computing 2026" --mode deep --runtime codex --skeleton-only
+  python research_engine.py --query "state of quantum computing 2026" --mode deep --runtime codex --attempt-autowrite
   python research_engine.py --query "state of quantum computing 2026" --mode deep --runtime codex --auto-continue
   python research_engine.py --resume ./research_20260404_quantum_computing/run_state.json --runtime codex
   python research_engine.py --resume ./research_20260404_quantum_computing/continuation_state.json --runtime codex
@@ -2481,6 +2560,24 @@ Examples:
         type=int,
         help="Optional per-pass target word budget for section batching",
     )
+    write_mode_group = parser.add_mutually_exclusive_group()
+    write_mode_group.add_argument(
+        "--skeleton-only",
+        action="store_true",
+        help=(
+            "Initialize phase artifacts, state files, and the report skeleton only. "
+            "This is the default behavior."
+        ),
+    )
+    write_mode_group.add_argument(
+        "--attempt-autowrite",
+        action="store_true",
+        help=(
+            "Mark the run as an automatic-writing attempt. In most runtimes the helper "
+            "still mainly prepares artifacts and waits for the agent runtime or delegated "
+            "subagents to perform retrieval and drafting."
+        ),
+    )
     parser.add_argument(
         "--auto-continue",
         action="store_true",
@@ -2515,10 +2612,16 @@ Examples:
 
     mode = ResearchMode(args.mode)
     runtime = RuntimeAdapter(args.runtime)
+    write_mode = (
+        WriteMode.ATTEMPT_AUTOWRITE
+        if args.attempt_autowrite
+        else WriteMode.SKELETON_ONLY
+    )
     engine = ResearchEngine(
         mode=mode,
         runtime=runtime,
         pass_word_budget=args.pass_word_budget,
+        write_mode=write_mode,
     )
 
     if args.resume:
@@ -2542,6 +2645,11 @@ Examples:
         engine.mode = engine.state.mode
         if args.pass_word_budget is None:
             engine.pass_word_budget = DEFAULT_PASS_WORD_BUDGET[engine.mode]
+        saved_write_mode = engine.state.metadata.get("write_mode")
+        if saved_write_mode in WriteMode._value2member_map_:
+            engine.write_mode = WriteMode(saved_write_mode)
+        else:
+            engine.write_mode = write_mode
 
         saved_runtime = engine.state.metadata.get("runtime")
         if args.runtime == "generic" and saved_runtime in RuntimeAdapter._value2member_map_:
@@ -2574,7 +2682,7 @@ Examples:
     if engine.state and engine.state.status == "completed":
         print("Research report is complete.")
     else:
-        print("Research orchestration state updated. Continue writing the listed sections.")
+        print("Research artifacts initialized or refreshed; report body text is still incomplete.")
 
 
 if __name__ == "__main__":
